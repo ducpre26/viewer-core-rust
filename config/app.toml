@@ -1,0 +1,19 @@
+[web]
+binding = "${VIEWER_BIND:127.0.0.1}"
+port = ${VIEWER_PORT:8888}
+global_prefix = "/ws/rest"
+graceful = true
+
+[web.openapi]
+doc_prefix = "/docs"
+
+[web.openapi.info]
+title = "Viewer Core Infrastructure"
+version = "0.1.0"
+description = "Step 1 infrastructure only; no business APIs implemented."
+
+[logger]
+level = "${VIEWER_LOG_LEVEL:info}"
+format = "compact"
+time_style = "utc"
+

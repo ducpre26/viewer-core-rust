@@ -1,0 +1,1021 @@
+[
+  {
+    "method": "POST",
+    "route": "/ws/rest/client/getlink",
+    "controller": "ClientAPI.getLinkV1",
+    "source": "src/main/java/vn/saolasoft/viewer/client/ClientAPI.java",
+    "use_case": "UC-001",
+    "service_calls": [
+      "sessionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/client/link",
+    "controller": "ClientAPI.getLink",
+    "source": "src/main/java/vn/saolasoft/viewer/client/ClientAPI.java",
+    "use_case": "UC-001",
+    "service_calls": [
+      "sessionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/ai/inference",
+    "controller": "InferenceAPI.runInference",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/InferenceAPI.java",
+    "use_case": "UC-010",
+    "service_calls": [
+      "aiAbnormalDetectionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/ai/model",
+    "controller": "ModelController.getAll",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/ModelController.java",
+    "use_case": "UC-012",
+    "service_calls": [
+      "modelService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/ai/model/{id}",
+    "controller": "ModelController.getById",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/ModelController.java",
+    "use_case": "UC-012",
+    "service_calls": [
+      "modelService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/ai/model",
+    "controller": "ModelController.create",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/ModelController.java",
+    "use_case": "UC-012",
+    "service_calls": [
+      "modelService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/ai/model",
+    "controller": "ModelController.update",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/ModelController.java",
+    "use_case": "UC-012",
+    "service_calls": [
+      "modelService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/ai/model/{id}",
+    "controller": "ModelController.delete",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/ModelController.java",
+    "use_case": "UC-012",
+    "service_calls": [
+      "modelService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/ai/request",
+    "controller": "SegmentationAPI.requestSegmentation",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/SegmentationAPI.java",
+    "use_case": "UC-011",
+    "service_calls": [
+      "aiSegmentationService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/ai/status",
+    "controller": "SegmentationAPI.getStatus",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/SegmentationAPI.java",
+    "use_case": "UC-011",
+    "service_calls": [
+      "aiSegmentationService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/ai/result",
+    "controller": "SegmentationAPI.finalizeSegmentation",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/SegmentationAPI.java",
+    "use_case": "UC-011",
+    "service_calls": [
+      "aiSegmentationService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/ai/statistics",
+    "controller": "SegmentationAPI.getStatistics",
+    "source": "src/main/java/vn/saolasoft/viewer/module/ai/rest/SegmentationAPI.java",
+    "use_case": "UC-011",
+    "service_calls": [
+      "aiSegmentationService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/download/studies/{studyUID}",
+    "controller": "DownloadAPI.downloadStudy",
+    "source": "src/main/java/vn/saolasoft/viewer/module/file/rest/DownloadAPI.java",
+    "use_case": "UC-005",
+    "service_calls": [
+      "downloadService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/download/studies/{studyUID}/series/{seriesUID}",
+    "controller": "DownloadAPI.downloadSeries",
+    "source": "src/main/java/vn/saolasoft/viewer/module/file/rest/DownloadAPI.java",
+    "use_case": "UC-005",
+    "service_calls": [
+      "downloadService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/download/studies/{studyUID}/series/{seriesUID}/instances/{sopUID}",
+    "controller": "DownloadAPI.downloadInstance",
+    "source": "src/main/java/vn/saolasoft/viewer/module/file/rest/DownloadAPI.java",
+    "use_case": "UC-005",
+    "service_calls": [
+      "downloadService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/license/ccu/events",
+    "controller": "LicenseCcuAPI.events",
+    "source": "src/main/java/vn/saolasoft/viewer/module/license/rest/LicenseCcuAPI.java",
+    "use_case": "UC-014",
+    "service_calls": [
+      "ccuSseService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/license/ccu/snapshot",
+    "controller": "LicenseCcuAPI.snapshot",
+    "source": "src/main/java/vn/saolasoft/viewer/module/license/rest/LicenseCcuAPI.java",
+    "use_case": "UC-014",
+    "service_calls": [
+      "ccuSseService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/license/ccu/heartbeat",
+    "controller": "LicenseCcuAPI.heartbeat",
+    "source": "src/main/java/vn/saolasoft/viewer/module/license/rest/LicenseCcuAPI.java",
+    "use_case": "UC-014",
+    "service_calls": [
+      "ccuHeartbeatService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/license/ccu/heartbeat/snapshot",
+    "controller": "LicenseCcuAPI.heartbeatSnapshot",
+    "source": "src/main/java/vn/saolasoft/viewer/module/license/rest/LicenseCcuAPI.java",
+    "use_case": "UC-014",
+    "service_calls": [
+      "ccuHeartbeatService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/license/status",
+    "controller": "LicenseStatusAPI.getStatus",
+    "source": "src/main/java/vn/saolasoft/viewer/module/license/rest/LicenseStatusAPI.java",
+    "use_case": "UC-014",
+    "service_calls": [
+      "ccuSseService",
+      "licenseGuard"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/session/{sessionID}/print",
+    "controller": "PrinterAPI.printRequest",
+    "source": "src/main/java/vn/saolasoft/viewer/module/printer/rest/PrinterAPI.java",
+    "use_case": "UC-013",
+    "service_calls": [
+      "printService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/printer",
+    "controller": "PrinterAPI.getPrinters",
+    "source": "src/main/java/vn/saolasoft/viewer/module/printer/rest/PrinterAPI.java",
+    "use_case": "UC-013",
+    "service_calls": [
+      "printerCRUDService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/printer/{id}",
+    "controller": "PrinterAPI.getPrinterById",
+    "source": "src/main/java/vn/saolasoft/viewer/module/printer/rest/PrinterAPI.java",
+    "use_case": "UC-013",
+    "service_calls": [
+      "printerCRUDService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/session/{sessionID}/printer",
+    "controller": "PrinterAPI.createPrinter",
+    "source": "src/main/java/vn/saolasoft/viewer/module/printer/rest/PrinterAPI.java",
+    "use_case": "UC-013",
+    "service_calls": [
+      "printerCRUDService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/session/{sessionID}/printer",
+    "controller": "PrinterAPI.updatePrinter",
+    "source": "src/main/java/vn/saolasoft/viewer/module/printer/rest/PrinterAPI.java",
+    "use_case": "UC-013",
+    "service_calls": [
+      "printerCRUDService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/session/{sessionID}/printer/{id}",
+    "controller": "PrinterAPI.deletePrinter",
+    "source": "src/main/java/vn/saolasoft/viewer/module/printer/rest/PrinterAPI.java",
+    "use_case": "UC-013",
+    "service_calls": [
+      "printerCRUDService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/api/rt",
+    "controller": "SealRuntimeAPI.handshake",
+    "source": "src/main/java/vn/saolasoft/viewer/module/seal/rest/SealRuntimeAPI.java",
+    "use_case": "excluded:seal",
+    "service_calls": [
+      "cryptoService",
+      "licenseGuard"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/api/rc/{*chunkPath}",
+    "controller": "SealRuntimeAPI.runtimeChunk",
+    "source": "src/main/java/vn/saolasoft/viewer/module/seal/rest/SealRuntimeAPI.java",
+    "use_case": "excluded:seal",
+    "service_calls": [
+      "SealedChunkService",
+      "licenseGuard",
+      "sealedChunkService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}",
+    "controller": "SessionAPI.getByID",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session/rest/SessionAPI.java",
+    "use_case": "UC-002",
+    "service_calls": [
+      "sessionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/session/{sessionID}",
+    "controller": "SessionAPI.deleteByID",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session/rest/SessionAPI.java",
+    "use_case": "UC-002",
+    "service_calls": [
+      "sessionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/session/{sessionID}/share",
+    "controller": "SessionAPI.shareLink",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session/rest/SessionAPI.java",
+    "use_case": "UC-002",
+    "service_calls": [
+      "sessionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/session",
+    "controller": "SessionAPI.updateSession",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session/rest/SessionAPI.java",
+    "use_case": "UC-002",
+    "service_calls": [
+      "sessionService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/session3d/websocketlink",
+    "controller": "Session3DAPI.getWebSocketLink",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java",
+    "use_case": "UC-007",
+    "service_calls": [
+      "session3DService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session3d/sessions",
+    "controller": "Session3DAPI.getSessions",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java",
+    "use_case": "UC-007",
+    "service_calls": [
+      "session3DService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session3d/sessions/{sessionID}",
+    "controller": "Session3DAPI.getSession",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java",
+    "use_case": "UC-007",
+    "service_calls": [
+      "session3DService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/session3d/sessions/{sessionID}",
+    "controller": "Session3DAPI.deleteSession",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java",
+    "use_case": "UC-007",
+    "service_calls": [
+      "session3DService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session3d/resources",
+    "controller": "Session3DAPI.getResource",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java",
+    "use_case": "UC-007",
+    "service_calls": [
+      "session3DService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/session3d/resources",
+    "controller": "Session3DAPI.freeResource",
+    "source": "src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java",
+    "use_case": "UC-007",
+    "service_calls": [
+      "session3DService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/session/{sessionID}/studies",
+    "controller": "StowRSAPI.store",
+    "source": "src/main/java/vn/saolasoft/viewer/module/stowrs/rest/StowRSAPI.java",
+    "use_case": "UC-006",
+    "service_calls": [
+      "stowRSService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/study/search",
+    "controller": "StudyAPI.searchStudy",
+    "source": "src/main/java/vn/saolasoft/viewer/module/study/rest/StudyAPI.java",
+    "use_case": "UC-003",
+    "service_calls": [
+      "studyService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/client",
+    "controller": "AdminAPI.getClients",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/client/{id}",
+    "controller": "AdminAPI.getClientById",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/admin/client",
+    "controller": "AdminAPI.createClient",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/admin/client",
+    "controller": "AdminAPI.updateClient",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/admin/client/{id}",
+    "controller": "AdminAPI.deleteClient",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/client/{clientId}/permission",
+    "controller": "AdminAPI.getClientPermissions",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientPermissionService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/admin/client/{clientId}/permission",
+    "controller": "AdminAPI.addClientPermission",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientPermissionService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/admin/client/{clientId}/permission/{permissionId}",
+    "controller": "AdminAPI.removeClientPermission",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "clientPermissionService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/config",
+    "controller": "AdminAPI.getConfigs",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/config/{id}",
+    "controller": "AdminAPI.getConfigById",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/admin/config",
+    "controller": "AdminAPI.createConfig",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/admin/config",
+    "controller": "AdminAPI.updateConfig",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/admin/config/{id}",
+    "controller": "AdminAPI.deleteConfig",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/permission",
+    "controller": "AdminAPI.getPermissions",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "permissionCrudService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/admin/permission/{id}",
+    "controller": "AdminAPI.getPermissionById",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "permissionCrudService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/admin/permission",
+    "controller": "AdminAPI.createPermission",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "permissionCrudService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/admin/permission",
+    "controller": "AdminAPI.updatePermission",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "permissionCrudService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/admin/permission/{id}",
+    "controller": "AdminAPI.deletePermission",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/AdminAPI.java",
+    "use_case": "UC-009",
+    "service_calls": [
+      "permissionCrudService"
+    ],
+    "preauthorize": [
+      "\"hasRole('ADMIN')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionId}/config",
+    "controller": "ConfigPublicAPI.getConfigs",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/ConfigPublicAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionId}/config/{id}",
+    "controller": "ConfigPublicAPI.getConfigById",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/ConfigPublicAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "POST",
+    "route": "/ws/rest/v1/session/{sessionId}/config",
+    "controller": "ConfigPublicAPI.createConfig",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/ConfigPublicAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"@sessionPermissionEvaluator.hasPermission('\" + PermissionKey.MODIFY_OVERLAY_CONFIG + \"')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "PUT",
+    "route": "/ws/rest/v1/session/{sessionId}/config",
+    "controller": "ConfigPublicAPI.updateConfig",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/ConfigPublicAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [
+      "\"@sessionPermissionEvaluator.hasPermission('\" + PermissionKey.MODIFY_OVERLAY_CONFIG + \"')\""
+    ],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "DELETE",
+    "route": "/ws/rest/v1/session/{sessionId}/config/{id}",
+    "controller": "ConfigPublicAPI.deleteConfig",
+    "source": "src/main/java/vn/saolasoft/viewer/module/util/rest/ConfigPublicAPI.java",
+    "use_case": "UC-008",
+    "service_calls": [
+      "configService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}",
+    "controller": "WadoRsAPI.getStudy",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/thumbnail",
+    "controller": "WadoRsAPI.getStudyThumbnail",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/metadata",
+    "controller": "WadoRsAPI.getStudyMetadata",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series",
+    "controller": "WadoRsAPI.getSeries",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}",
+    "controller": "WadoRsAPI.getSeries",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}/thumbnail",
+    "controller": "WadoRsAPI.getSeriesThumbnail",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}/metadata",
+    "controller": "WadoRsAPI.getSeriesMetadata",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}/instances",
+    "controller": "WadoRsAPI.getInstances",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}/instances/{objectUID}",
+    "controller": "WadoRsAPI.getInstances",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}/instances/{objectUID}/frames/{frames}/thumbnail",
+    "controller": "WadoRsAPI.getInstanceFrameThumbnail",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-rs/studies/{studyUID}/series/{seriesUID}/instances/{objectUID}/{bulk}/{bulkData}",
+    "controller": "WadoRsAPI.getBulkData",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  },
+  {
+    "method": "GET",
+    "route": "/ws/rest/v1/session/{sessionID}/wado-uri",
+    "controller": "WadoRsAPI.getInstanceByWadoURI",
+    "source": "src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java",
+    "use_case": "UC-004",
+    "service_calls": [
+      "wadoRsService"
+    ],
+    "preauthorize": [],
+    "entity_trace": "pending service/repository review",
+    "evidence": "source-only; runtime verification pending"
+  }
+]

@@ -1,0 +1,59 @@
+@startuml Use Cases Overview
+left to right direction
+
+actor "Hệ thống client PACS" as client
+actor "Người dùng Viewer" as viewer
+actor "Quản trị viên" as admin
+actor "Ứng dụng gọi API" as apiCaller
+actor "Bộ lập lịch" as scheduler
+actor "Kho DICOM" as dicomStore
+actor "Máy chủ AI" as aiServer
+actor "Máy in DICOM" as dicomPrinter
+
+rectangle "1PACS Viewer Core" {
+    usecase "UC-001\nKhởi tạo phiên xem ảnh 2D" as UC001
+    usecase "UC-002\nQuản lý và chia sẻ phiên 2D" as UC002
+    usecase "UC-003\nTra cứu study DICOM" as UC003
+    usecase "UC-004\nTruy xuất dữ liệu ảnh DICOM" as UC004
+    usecase "UC-005\nTải nội dung DICOM" as UC005
+    usecase "UC-006\nTiếp nhận và xuất key image" as UC006
+    usecase "UC-007\nQuản lý phiên dựng hình 3D" as UC007
+    usecase "UC-008\nQuản lý cấu hình Viewer" as UC008
+    usecase "UC-009\nQuản trị client và quyền" as UC009
+    usecase "UC-010\nPhân tích bất thường bằng AI" as UC010
+    usecase "UC-011\nPhân đoạn ảnh bằng AI" as UC011
+    usecase "UC-012\nQuản lý model AI" as UC012
+    usecase "UC-013\nIn ảnh qua máy in DICOM" as UC013
+    usecase "UC-014\nTheo dõi license và người dùng đồng thời" as UC014
+}
+
+client --> UC001
+viewer --> UC002
+scheduler --> UC002
+viewer --> UC003
+dicomStore --> UC003
+viewer --> UC004
+dicomStore --> UC004
+viewer --> UC005
+dicomStore --> UC005
+viewer --> UC006
+scheduler --> UC006
+dicomStore --> UC006
+viewer --> UC007
+apiCaller --> UC007
+scheduler --> UC007
+viewer --> UC008
+admin --> UC008
+admin --> UC009
+viewer --> UC010
+aiServer --> UC010
+viewer --> UC011
+aiServer --> UC011
+apiCaller --> UC012
+viewer --> UC013
+dicomPrinter --> UC013
+viewer --> UC014
+admin --> UC014
+scheduler --> UC014
+
+@enduml

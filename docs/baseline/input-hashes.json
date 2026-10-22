@@ -1,0 +1,70 @@
+[
+  {
+    "source": "docs/use_cases/UC-001-khoi-tao-phien-xem-anh-2d.md",
+    "sha256": "a3bb2752003258fb15130aae1543f7616b6fca5b2c4033fa502938b279dd3b21"
+  },
+  {
+    "source": "docs/use_cases/UC-002-quan-ly-va-chia-se-phien-2d.md",
+    "sha256": "ca5a880f57158caa46447932b0a74510c040e064c6833e51d5fd9afff940661b"
+  },
+  {
+    "source": "docs/use_cases/UC-003-tra-cuu-study-dicom.md",
+    "sha256": "b57505d41957ec987d8f743a93e9e027150868e4245e9f442866f37185ee3d8e"
+  },
+  {
+    "source": "docs/use_cases/UC-004-truy-xuat-du-lieu-anh-dicom.md",
+    "sha256": "0f59813bced22a6ecd7e876ef8c12aeff472f8782db9f070c44754cf64d6aec4"
+  },
+  {
+    "source": "docs/use_cases/UC-005-tai-noi-dung-dicom.md",
+    "sha256": "5a5465d0a03c6597840f1b9b45ce767c3d1673a03b0c977454eadaa563401445"
+  },
+  {
+    "source": "docs/use_cases/UC-006-tiep-nhan-va-xuat-key-image.md",
+    "sha256": "31a99d54a47f0d479bd3e09b2c629ba3cf7bb903c5bd2f390b5251ed495fd143"
+  },
+  {
+    "source": "docs/use_cases/UC-007-quan-ly-phien-dung-hinh-3d.md",
+    "sha256": "c7eb3d4ed7ed2abc07bcb4a804e7510422ce9f7f2b39ab2337a213724921b95e"
+  },
+  {
+    "source": "docs/use_cases/UC-008-quan-ly-cau-hinh-viewer.md",
+    "sha256": "a6d1bb31f9095704e4824d6d490b7ee52f74a3dd6b2c1510163d84ab232b41e4"
+  },
+  {
+    "source": "docs/use_cases/UC-009-quan-tri-client-va-quyen.md",
+    "sha256": "0a6d0bef14097e1d4329a95c2eb46bdf2c1a8f23592031c16a84c0edcde8a5ba"
+  },
+  {
+    "source": "docs/use_cases/UC-010-phan-tich-bat-thuong-bang-ai.md",
+    "sha256": "79109c8d2929ae6da89c1cc4207c5294240835332ce5da59596b10e5c5b4596d"
+  },
+  {
+    "source": "docs/use_cases/UC-011-phan-doan-anh-bang-ai.md",
+    "sha256": "fdefed82e2004f837afd1116d197d650633b8cffd52e8ed8100bbeac7dd59441"
+  },
+  {
+    "source": "docs/use_cases/UC-012-quan-ly-model-ai.md",
+    "sha256": "1b3eab47707c0855365e18f0268e9063665e34e2bb5720feccbc198c23d169c9"
+  },
+  {
+    "source": "docs/use_cases/UC-013-in-anh-qua-may-in-dicom.md",
+    "sha256": "59dd3dc78e0624f396c8818b854e6422fb7193664cb37b0d32cad86430e194b2"
+  },
+  {
+    "source": "docs/use_cases/UC-014-theo-doi-license-va-nguoi-dung-dong-thoi.md",
+    "sha256": "a75bc7891e00851112b60764e6e7281aa5d569cebe294594cdea6533ad6e256d"
+  },
+  {
+    "source": "docs/entity_model.md",
+    "sha256": "c2e4344725400b2efdea6d563422b6a3579067b6edebf4ca306d07fa4b4f338c"
+  },
+  {
+    "source": "docs/use_cases.puml",
+    "sha256": "fd7eca9b8a6552a5fbecd110a7ef92f497483fdc89af1431842f83752b5fa39b"
+  },
+  {
+    "source": "db/init.sql",
+    "sha256": "7b7e99d14cb541e097494d13b129fc6641662bf70eedabee2faf7806bbfe683b"
+  }
+]

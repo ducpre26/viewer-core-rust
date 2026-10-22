@@ -1,0 +1,6 @@
+{
+  "commit": "c983e4eac389fa6b31f970cfee8f9fce5e20af4c",
+  "branch": "codex/java-baseline-step-00",
+  "inputs": "input-hashes.json",
+  "note": "UC/entity documents were untracked at capture; snapshots are supplemental, not part of the Java commit."
+}

@@ -1,0 +1,6 @@
+[web]
+binding = "${VIEWER_BIND:0.0.0.0}"
+
+[logger]
+format = "json"
+
