@@ -1,4 +1,5 @@
 //! HTTP infrastructure; business routes belong to their migration steps.
+use crate::dicom::Jvm;
 use crate::persistence::Persistence;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -24,8 +25,24 @@ async fn health() -> Json<Health> {
     Json(Health { status: "up" })
 }
 
-async fn readiness(Extension(database): Extension<Persistence>) -> (StatusCode, Json<Readiness>) {
-    let ready = database.check().await.is_ok();
+async fn readiness(
+    Extension(database): Extension<Persistence>,
+    Extension(jvm): Extension<Option<Jvm>>,
+) -> (StatusCode, Json<Readiness>) {
+    let db_ready = database.check().await.is_ok();
+    let mut dependencies = vec![if db_ready {
+        "postgresql:up"
+    } else {
+        "postgresql:down"
+    }];
+    let jvm_ready = if let Some(jvm) = jvm {
+        let ready = jvm.check().await.is_ok();
+        dependencies.push(if ready { "jvm:up" } else { "jvm:down" });
+        ready
+    } else {
+        true
+    };
+    let ready = db_ready && jvm_ready;
     (
         if ready {
             StatusCode::OK
@@ -34,16 +51,12 @@ async fn readiness(Extension(database): Extension<Persistence>) -> (StatusCode, 
         },
         Json(Readiness {
             status: if ready { "ready" } else { "not_ready" },
-            dependencies: vec![if ready {
-                "postgresql:up"
-            } else {
-                "postgresql:down"
-            }],
+            dependencies,
         }),
     )
 }
 
-pub fn router(database: Persistence) -> Router {
+pub fn router(database: Persistence, jvm: Option<Jvm>) -> Router {
     Router::new()
         .api_route("/health", get(health))
         .api_route(
@@ -55,6 +68,7 @@ pub fn router(database: Persistence) -> Router {
             }),
         )
         .layer(Extension(database))
+        .layer(Extension(jvm))
 }
 
 #[cfg(test)]
@@ -63,6 +77,27 @@ mod tests {
     use crate::persistence::Migrator;
     use sea_orm::TransactionTrait;
     use sea_orm_migration::MigratorTrait;
+
+    #[tokio::test]
+    #[ignore = "requires dedicated PostgreSQL and explicit JNI environment; run smoke_jni.py --app"]
+    async fn postgres_and_jvm_readiness() {
+        let database = Persistence::connect_from_env()
+            .await
+            .expect("PostgreSQL startup");
+        let config = crate::dicom::JvmConfig::from_env()
+            .unwrap()
+            .expect("JNI must be enabled");
+        let jvm = Jvm::start(config).await.expect("JVM startup");
+        let (status, body) =
+            readiness(Extension(database.clone()), Extension(Some(jvm.clone()))).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body.dependencies, vec!["postgresql:up", "jvm:up"]);
+        jvm.shutdown().await.unwrap();
+        let (status, body) = readiness(Extension(database.clone()), Extension(Some(jvm))).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body.dependencies, vec!["postgresql:up", "jvm:down"]);
+        database.close().await.unwrap();
+    }
 
     #[tokio::test]
     #[ignore = "requires dedicated PostgreSQL and VIEWER_DATABASE_URL"]
@@ -81,11 +116,11 @@ mod tests {
         );
         let tx = database.connection().begin().await.unwrap();
         tx.rollback().await.unwrap();
-        let (status, body) = readiness(Extension(database.clone())).await;
+        let (status, body) = readiness(Extension(database.clone()), Extension(None)).await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body.status, "ready");
         database.clone().close().await.unwrap();
-        let (status, body) = readiness(Extension(database)).await;
+        let (status, body) = readiness(Extension(database), Extension(None)).await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(body.status, "not_ready");
     }

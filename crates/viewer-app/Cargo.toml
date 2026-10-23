@@ -16,3 +16,4 @@ schemars.workspace = true
 sea-orm.workspace = true
 sea-orm-migration.workspace = true
 url.workspace = true
+dicom-jvm = { path = "../dicom-jvm" }

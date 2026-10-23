@@ -1,4 +1,5 @@
 /target/
+/java/dicom-facade/target/
 .env
 *.log
 __pycache__/

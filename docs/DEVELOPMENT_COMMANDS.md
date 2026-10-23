@@ -55,7 +55,7 @@ Kiểm tra thủ công khi ứng dụng đang chạy (thay `8888` bằng cổng 
 | `cargo fmt --all -- --check` | Báo lỗi nếu mã chưa đúng định dạng. |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | Kiểm tra lint và coi cảnh báo là lỗi. |
 | `cargo test --workspace --locked` | Chạy test không cần DB; test PostgreSQL bị bỏ qua có ghi rõ. |
-| `cargo test --workspace --locked -- --include-ignored` | Chạy cả kiểm thử PostgreSQL thật: migration, transaction, readiness và đóng pool. |
+| `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored` | Chạy kiểm thử PostgreSQL thật: migration, transaction, readiness và đóng pool. |
 | `cargo build --workspace --locked` | Build debug cho toàn workspace. |
 | `python tools/smoke_app.py` | Chạy ứng dụng debug thật để kiểm tra HTTP, cấu hình, logging và dừng sạch. |
 
@@ -73,7 +73,65 @@ CI tại `.github/workflows/rust.yml` chạy format, clippy, test, release build
 release smoke test trên Windows và Ubuntu. Kết quả CI chỉ có sau khi workflow
 thực sự chạy; file workflow tự nó không chứng minh Linux đã pass.
 
-## 5. Xem thay đổi trước khi commit
+## 5. Build và kiểm tra Java facade (Step 3)
+
+Cần Python 3, Maven 3.9 và JDK 25. Truyền đường dẫn JDK rõ ràng để Maven và
+smoke test dùng cùng runtime. Ví dụ Windows local:
+
+```powershell
+python tools/facade.py build --java-home 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot'
+python tools/facade.py verify --java-home 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot'
+```
+
+Linux dùng cùng lệnh với đường dẫn JDK tại máy. Nếu cache Maven mặc định không
+truy cập được, thêm `--maven-repo <directory>` vào lệnh build; trên máy phát triển
+hiện tại dùng `--maven-repo 'C:\Users\Admin\.m2\repository'`.
+
+- `build`: Maven clean/package, tạo thư mục dependency, kiểm tra hai method từ
+  JAR thật và ghi manifest/checksum. Đây là kiểm tra packaging Java, chưa phải JNI.
+- `verify`: kiểm tra manifest, inventory/checksum JAR rồi chạy lại packaged smoke.
+- Artifact: `java/dicom-facade/target/distribution/`; dependency directory hiện rỗng.
+- Log: `target/step-03-logs/`; mỗi lần chạy ghi đè log của công đoạn tương ứng.
+
+Theo dõi build trực tiếp từ terminal riêng:
+
+```powershell
+Get-Content target/step-03-logs/build-facade.log -Wait -Tail 50
+```
+
+Chi tiết contract và giới hạn kiểm chứng tại [facade README](../java/dicom-facade/README.md).
+
+## 6. Kiểm tra Rust/JNI và ứng dụng (Step 3)
+
+Sau khi build facade, chạy với JDK 25 explicit:
+
+```powershell
+python tools/smoke_jni.py --java-home 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot'
+python tools/smoke_jni.py --java-home 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot' --app
+python tools/smoke_jni.py --java-home 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot' --release --app
+```
+
+Lệnh đầu kiểm tra adapter bằng JVM thật trong subprocess riêng, không cần DB.
+`--app` cần biến môi trường PostgreSQL và binary debug đã build; thêm `--release`
+để kiểm tra binary release. Script chọn giới hạn memory/timeout thử nghiệm rõ ràng,
+luôn bật `-Xcheck:jni`, kiểm tra readiness 200/503, HTTP dev/prod, shutdown và lỗi
+JVM fatal. Cấu hình chạy app thủ công nằm trong [README adapter](../crates/dicom-jvm/README.md).
+
+Không chạy `--include-ignored` toàn workspace khi chỉ có DB: các test JNI cần thêm
+runtime và packaged facade. Chạy từng lệnh ở trên để chuẩn bị đúng môi trường.
+`smoke_app.py` luôn kiểm tra JNI tắt; `smoke_jni.py --app` kiểm tra JNI bật.
+
+Theo dõi log suite từ terminal riêng:
+
+```powershell
+Get-Content target/step-03-logs/jni-suite.log -Wait -Tail 50
+```
+
+CI Windows/Ubuntu build facade bằng Temurin 25, chạy các kiểm tra Rust và cả hai
+chế độ JNI; log và manifest được lưu thành artifact CI. Build Java thực tế được
+ghi trong manifest; đây chưa phải lựa chọn runtime production đã chốt.
+
+## 7. Xem thay đổi trước khi commit
 
 | Lệnh | Mục đích |
 |---|---|

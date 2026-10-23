@@ -6,7 +6,7 @@
 kiểm tra, build release và xem thay đổi trước khi commit.
 
 Infrastructure for the Java-to-Rust migration, including PostgreSQL persistence.
-Business modules and JVM/JNI are not implemented yet.
+JVM/JNI foundation is implemented; business DICOM operations are not implemented yet.
 
 ## Run
 
@@ -25,7 +25,7 @@ Summer-web currently pulls in aide 0.16.0-alpha.4 for OpenAPI; it is locked too.
 | Endpoint | Purpose |
 |---|---|
 | `/ws/rest/health` | Process liveness |
-| `/ws/rest/ready` | Checks PostgreSQL connectivity |
+| `/ws/rest/ready` | Checks PostgreSQL and, when enabled, JVM/facade readiness |
 | `/ws/rest/docs/openapi.json` | Generated OpenAPI for the infrastructure routes |
 
 Default address: `127.0.0.1:8888`. Stop with Ctrl+C on Windows or SIGTERM/Ctrl+C on
@@ -78,7 +78,8 @@ dev/prod configuration, health/readiness, generated OpenAPI, unknown routes,
 scheduler startup, production JSON logging, and clean signal-driven shutdown.
 On Windows it creates a hidden private console to send Ctrl+C safely. The GitHub
 Actions workflow runs the same checks on Windows and Linux x86_64 when this
-project is hosted in its own repository. No Java runtime is required. PostgreSQL is mandatory (see below).
+project is hosted in its own repository. Java 25 is required when JNI is enabled.
+PostgreSQL is mandatory (see below).
 
 Version-matched upstream references:
 [summer](https://docs.rs/summer/0.7.2/summer/),
@@ -131,10 +132,29 @@ closed explicitly after HTTP drains and scheduler shutdown completes.
 Run the real PostgreSQL integration test in addition to the standard checks:
 
 ```text
-cargo test --workspace --locked -- --include-ignored
+cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored
 python tools/smoke_app.py
 ```
 
 CI provisions a dedicated PostgreSQL 18 instance on each Windows/Linux runner.
 Local PostgreSQL 18 database `viewer_rust` was created separately; no business
 tables are needed in Step 02.
+
+## JVM/JNI (Step 03)
+
+JNI defaults to disabled. Enable with `VIEWER_JNI_ENABLED=true` and the explicit
+runtime, artifact and limit settings in [the adapter guide](crates/dicom-jvm/README.md).
+Build the Java 25 [facade](java/dicom-facade/README.md) first. It advertises API 1
+and empty operation/codec lists. The adapter pins jni-rs 0.21.1 with invocation,
+validates the distribution/checksums, and runs synchronous JNI on a dedicated worker.
+
+Startup checks JVM/facade before HTTP. Readiness adds `jvm:up` or `jvm:down` when
+enabled. Normal shutdown releases references, detaches, destroys the JVM and then
+closes PostgreSQL. An unrecoverable call or bounded shutdown failure exits the
+process; no in-process JVM restart is attempted.
+
+See [development commands](docs/DEVELOPMENT_COMMANDS.md) for isolated JVM tests and
+HTTP regression with JNI enabled. Logs are in `target/step-03-logs/`. Runtime
+production distribution and P1–P4 limits remain open; test limits are not approval
+of production sizing. Completion evidence is recorded in
+[Step 3](docs/step/step-03-jvm-jni-foundation.md).
