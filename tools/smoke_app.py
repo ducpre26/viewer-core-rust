@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HTTP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def stop(process):
+def send_stop_signal(process):
     if os.name == "nt":
         # Attach a helper to the child's private, hidden console. Ctrl+C never
         # reaches the user's terminal or another application.
@@ -36,14 +36,21 @@ time.sleep(0.2)
         )
     else:
         process.send_signal(signal.SIGTERM)
+
+
+def stop(process):
+    send_stop_signal(process)
     assert process.wait(timeout=15) == 0, "Application exited unsuccessfully"
 
 
-def check(profile, binary):
+def check(profile, binary, jni_env=None):
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     env = os.environ.copy()
+    env["VIEWER_JNI_ENABLED"] = "false"
+    if jni_env:
+        env.update(jni_env)
     env.pop("RUST_LOG", None)
     env.update(SUMMER_ENV=profile, VIEWER_BIND="127.0.0.1", VIEWER_PORT=str(port),
                VIEWER_LOG_LEVEL="info", VIEWER_CONFIG=str(ROOT / "config/app.toml"))
@@ -57,7 +64,9 @@ def check(profile, binary):
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = subprocess.SW_HIDE
         options.update(creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=startup)
-    with tempfile.TemporaryFile() as logs:
+    log_dir = ROOT / "target/step-03-logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with (log_dir / f"app-{profile}-{'jni' if jni_env else 'no-jni'}.log").open("w+b") as logs:
         process = subprocess.Popen([str(binary)], cwd=ROOT, env=env,
                                    stdout=logs, stderr=logs, **options)
         try:
@@ -79,7 +88,8 @@ def check(profile, binary):
                     if time.monotonic() >= deadline:
                         raise AssertionError("Startup timed out")
                     time.sleep(0.1)
-            assert get("/ready") == {"status": "ready", "dependencies": ["postgresql:up"]}
+            dependencies = ["postgresql:up"] + (["jvm:up"] if jni_env else [])
+            assert get("/ready") == {"status": "ready", "dependencies": dependencies}
             spec = get("/docs/openapi.json")
             assert spec["info"]["title"] == "Viewer Core Infrastructure"
             for path in ("/health", "/ready"):
@@ -95,6 +105,10 @@ def check(profile, binary):
             output = logs.read().decode("utf-8", errors="replace")
             assert "shutdown" in output.lower(), "Missing graceful shutdown evidence"
             assert "PostgreSQL pool closed" in output, "Pool did not close"
+            if jni_env:
+                for evidence in ("JVM ready", "JNI worker detached", "JVM destroyed"):
+                    assert evidence in output, f"Missing JNI lifecycle evidence: {evidence}"
+                assert "WARNING in native method" not in output
             assert "503" in spec["paths"]["/ws/rest/ready"]["get"]["responses"]
             for secret in (env.get("VIEWER_DATABASE_PASSWORD"), env.get("VIEWER_DATABASE_URL")):
                 if secret:
@@ -103,7 +117,7 @@ def check(profile, binary):
             if profile == "prod":
                 events = [json.loads(line) for line in output.splitlines() if line.startswith("{")]
                 assert events, "Production logging must include JSON events"
-            print(f"PASS {profile}: health, readiness, OpenAPI, 404, logging, scheduler, graceful stop")
+            print(f"PASS {profile} JNI={'on' if jni_env else 'off'}: health, readiness, OpenAPI, 404, logging, scheduler, graceful stop")
         except Exception:
             logs.seek(0)
             print(logs.read().decode("utf-8", errors="replace"), file=sys.stderr)
@@ -116,6 +130,7 @@ def check(profile, binary):
 
 def check_startup_failures(binary):
     base = os.environ.copy()
+    base["VIEWER_JNI_ENABLED"] = "false"
     base.pop("RUST_LOG", None)
     base["VIEWER_DATABASE_TIMEOUT_SECONDS"] = "1"
     with socket.socket() as sock:

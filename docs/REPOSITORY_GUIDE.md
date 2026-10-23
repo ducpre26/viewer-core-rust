@@ -1,8 +1,8 @@
 # Hướng dẫn cấu trúc repo Rust cho người mới
 
-Tài liệu mô tả repo `1pacs-viewer-core-rust` tại thời điểm hoàn tất Step 02
-(2026-10-23). Hiện đã có ứng dụng HTTP và kết nối PostgreSQL. Các thư mục
-`auth`, `domain`, `dicom` mới là khung, chưa có chức năng nghiệp vụ.
+Tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 3 (2026-10-26).
+Ứng dụng đã có HTTP, PostgreSQL và nền tảng JVM/JNI. `auth` và `domain`
+vẫn là khung; chưa triển khai thao tác DICOM nghiệp vụ.
 
 ## 1. Một số khái niệm trước khi đọc
 
@@ -10,9 +10,9 @@ Tài liệu mô tả repo `1pacs-viewer-core-rust` tại thời điểm hoàn t�
 |---|---|
 | Rust | Ngôn ngữ viết backend mới; mã nguồn có đuôi `.rs`. |
 | Cargo | Công cụ quản lý thư viện, build và chạy test; gần với vai trò Maven trong Java. |
-| Package | Đơn vị dự án được mô tả bởi một `Cargo.toml`. Package hiện tại là `viewer-app`. |
+| Package | Đơn vị dự án được mô tả bởi một `Cargo.toml`. Workspace hiện có `viewer-app` và `dicom-jvm`. |
 | Crate | Đơn vị mã được Rust biên dịch. Package này có crate thư viện từ `lib.rs` và crate chương trình từ `main.rs`. |
-| Workspace | Nhóm package cùng quản lý dependency và kết quả build. Hiện workspace chỉ có `viewer-app`. |
+| Workspace | Nhóm package cùng quản lý dependency và kết quả build. Hiện workspace có hai package. |
 | Module | Cách tổ chức mã bên trong crate, khai báo bằng `mod`. Folder không tự trở thành module chỉ vì tồn tại. |
 | Dependency | Thư viện bên ngoài được khai báo trong `Cargo.toml`. |
 | Migration | Thay đổi cấu trúc DB được quản lý theo thứ tự để áp dụng khi nâng cấp ứng dụng. |
@@ -42,7 +42,9 @@ Tài liệu mô tả repo `1pacs-viewer-core-rust` tại thời điểm hoàn t�
 │       ├── persistence/mod.rs Pool PostgreSQL và migration runner
 │       ├── auth/mod.rs        Khung xác thực và phân quyền
 │       ├── domain/mod.rs      Khung quy tắc và kiểu dữ liệu nghiệp vụ
-│       └── dicom/mod.rs       Khung adapter DICOM/JVM/JNI
+│       └── dicom/mod.rs       Ranh giới gọi adapter JVM từ ứng dụng
+├── crates/dicom-jvm/          Adapter JVM/JNI và kiểm thử subprocess
+├── java/dicom-facade/         Maven module facade Java 25
 ├── docs/                      Tài liệu kiến trúc, kế hoạch, tiến độ
 ├── tools/                     Công cụ hỗ trợ phát triển bằng Python
 └── target/                    Kết quả build tự sinh
@@ -71,6 +73,8 @@ Package `viewer-app` chọn dùng bằng dòng như `serde.workspace = true` tro
 | `sea-orm` | Làm việc với PostgreSQL và connection pool. |
 | `sea-orm-migration` | Chạy và theo dõi migration DB. |
 | `url` | Phân tích URL kết nối và xử lý thành phần credential. |
+| `jni` | Nạp JVM và gọi facade Java trong worker riêng. |
+| `serde_json`, `sha2` | Kiểm tra capabilities JSON và checksum JAR. |
 
 Trong khai báo dependency, `features` bật các khả năng cần dùng của thư viện.
 Ví dụ SeaORM đang bật PostgreSQL và Tokio/Rustls. Phiên bản khai báo có thể là
@@ -106,14 +110,17 @@ Chạy viewer-app
     → Đọc biến môi trường DB, tạo pool
     → Kiểm tra SELECT 1
     → Chạy các migration còn thiếu
+    → Nếu JNI bật: kiểm tra runtime/artifact, tạo JVM và kiểm tra facade
     → Nạp cấu hình ứng dụng, đăng ký WebPlugin và JobPlugin
     → Đăng ký route HTTP, chạy server
-    → Khi dừng: chờ server/scheduler dừng rồi đóng pool
+    → Khi dừng: chờ server/scheduler, dừng JVM rồi đóng pool DB
 ```
 
 DB bắt buộc. Nếu cấu hình hoặc kết nối/migration lỗi, chương trình kết thúc với
 mã lỗi trước khi mở HTTP. `VIEWER_DATABASE_URL`, `VIEWER_DATABASE_USER` và
 `VIEWER_DATABASE_PASSWORD` được đọc từ môi trường; không ghi mật khẩu vào mã.
+Khi `VIEWER_JNI_ENABLED=true`, startup cũng yêu cầu runtime Java 25 và facade hợp lệ;
+xem [hướng dẫn adapter](../crates/dicom-jvm/README.md).
 
 `#[tokio::main]` chuẩn bị runtime để hàm `async fn main()` hoạt động.
 `.await` chờ kết quả thao tác bất đồng bộ. `use ...` đưa tên kiểu/hàm vào phạm
@@ -130,9 +137,9 @@ Tên package là `viewer-app`, nhưng trong mã Rust dùng tên `viewer_app`, v�
 
 | Thành phần | Mục đích |
 |---|---|
-| `router(database)` | Tạo router và gắn pool DB cho handler thông qua `Extension`. |
+| `router(database, jvm)` | Tạo router và gắn pool DB cùng handle JVM (nếu bật) cho handler. |
 | `health()` | Trả trạng thái tiến trình đang sống. Không truy vấn DB. |
-| `readiness(...)` | Truy vấn DB; thành công trả 200, thất bại trả 503. |
+| `readiness(...)` | Kiểm tra DB và JVM khi bật; thành công trả 200, thất bại trả 503. |
 | `Health`, `Readiness` | Kiểu dữ liệu JSON trả ra; derive hỗ trợ JSON và schema. |
 | `mod tests` ở cuối tệp | Kiểm thử tích hợp PostgreSQL, migration, transaction, readiness và đóng pool. |
 
@@ -141,7 +148,8 @@ Prefix `/ws/rest` đến từ cấu hình. Các endpoint thực tế là
 Readiness có khai báo cả response 200 và 503 cho OpenAPI.
 
 `#[cfg(test)]` chỉ đưa phần test vào bản build kiểm thử. Test PostgreSQL có
-`#[ignore]` vì cần DB thật; chạy với `--include-ignored` để thực thi nó.
+`#[ignore]` vì cần DB thật. Chạy riêng test PostgreSQL và bộ JNI bằng các lệnh
+trong [tài liệu phát triển](DEVELOPMENT_COMMANDS.md) để cấp đúng runtime.
 
 ### `src/persistence/mod.rs`: nền tảng DB
 
@@ -165,13 +173,17 @@ clone. `&DatabaseConnection` là tham chiếu mượn kết nối. `Result<T, E>
 kết quả thành công (`Ok`) hoặc lỗi (`Err`); dấu `?` trả lỗi về hàm gọi khi thao
 tác thất bại. `impl Persistence` nhóm các hàm gắn với kiểu `Persistence`.
 
-### `auth/`, `domain/`, `dicom/`: vị trí dành cho bước sau
+### `auth/`, `domain/`, `dicom/`: ranh giới module
 
 | Module | Trách nhiệm dự kiến | Hiện trạng |
 |---|---|---|
 | `auth` | Xác thực session, middleware, kiểm tra quyền. | Chỉ có chú thích; bắt đầu ở Step 3a. |
 | `domain` | Kiểu dữ liệu và quy tắc nghiệp vụ, tránh phụ thuộc framework/I/O. | Chỉ có chú thích. |
-| `dicom` | Ranh giới adapter tới DICOM và JVM/JNI nội bộ. | Chỉ có chú thích; bắt đầu ở Step 3. |
+| `dicom` | Ranh giới từ ứng dụng tới crate `dicom-jvm`. | Xuất handle/config an toàn; chưa có thao tác DICOM nghiệp vụ. |
+
+Crate `dicom-jvm` giữ toàn bộ `JNIEnv`/Java reference và worker riêng. Maven module
+`java/dicom-facade` cung cấp `apiVersion()` và `capabilitiesJson()` trong JAR đã
+đóng gói. Readiness gọi facade qua worker khi JNI bật.
 
 `mod.rs` là tệp định nghĩa module ứng với thư mục chứa nó. Ví dụ
 `pub mod auth;` trong `lib.rs` liên kết tới `auth/mod.rs` ở cấu trúc hiện tại.
