@@ -81,5 +81,12 @@ thực sự chạy; file workflow tự nó không chứng minh Linux đã pass.
 | `git diff --check` | Tìm lỗi khoảng trắng trong các file đã theo dõi. |
 | `git diff` | Đọc lại các thay đổi đã theo dõi trước khi commit. |
 
-Các lệnh trên kiểm tra nền tảng HTTP và persistence. Khi có module nghiệp vụ, bổ sung test
-và kiểm tra riêng vào step tương ứng.
+Các lệnh trên kiểm tra nền tảng HTTP và persistence. Với từng nhiệm vụ, chọn lệnh phù hợp
+và đối chiếu kết quả với tiêu chí trong kế hoạch step; không cần chạy toàn bộ lệnh sau
+mỗi thay đổi nhỏ. Trước khi kết thúc step, chạy đủ các kiểm tra cần thiết cho phạm vi
+step và phần bị ảnh hưởng; test bỏ qua hoặc chưa chạy không được coi là đạt.
+
+Khi có module mới, bổ sung test tương ứng và kiểm tra xem các lệnh hiện có đã bao phủ
+tiêu chí của step chưa. Nếu cần lệnh mới, báo người quản lý về mục đích và kết quả cần
+kiểm chứng để thống nhất bổ sung vào tài liệu này. Trước khi commit, báo kết quả và
+hỏi lại người dùng; chỉ commit sau khi được xác nhận.
