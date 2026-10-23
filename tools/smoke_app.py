@@ -79,7 +79,7 @@ def check(profile, binary):
                     if time.monotonic() >= deadline:
                         raise AssertionError("Startup timed out")
                     time.sleep(0.1)
-            assert get("/ready") == {"status": "ready", "dependencies": []}
+            assert get("/ready") == {"status": "ready", "dependencies": ["postgresql:up"]}
             spec = get("/docs/openapi.json")
             assert spec["info"]["title"] == "Viewer Core Infrastructure"
             for path in ("/health", "/ready"):
@@ -94,6 +94,11 @@ def check(profile, binary):
             logs.seek(0)
             output = logs.read().decode("utf-8", errors="replace")
             assert "shutdown" in output.lower(), "Missing graceful shutdown evidence"
+            assert "PostgreSQL pool closed" in output, "Pool did not close"
+            assert "503" in spec["paths"]["/ws/rest/ready"]["get"]["responses"]
+            for secret in (env.get("VIEWER_DATABASE_PASSWORD"), env.get("VIEWER_DATABASE_URL")):
+                if secret:
+                    assert secret not in output, "Database secret leaked in runtime logs"
             assert "summer_job" in output, "Scheduler plugin did not start"
             if profile == "prod":
                 events = [json.loads(line) for line in output.splitlines() if line.startswith("{")]
@@ -109,6 +114,37 @@ def check(profile, binary):
                 process.wait(timeout=5)
 
 
+def check_startup_failures(binary):
+    base = os.environ.copy()
+    base.pop("RUST_LOG", None)
+    base["VIEWER_DATABASE_TIMEOUT_SECONDS"] = "1"
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        unavailable_port = sock.getsockname()[1]
+    cases = [
+        ({"VIEWER_DATABASE_URL": None}, "VIEWER_DATABASE_URL is required"),
+        ({"VIEWER_DATABASE_PASSWORD": "smoke-invalid-password-7f38"}, "authentication failed"),
+        ({"VIEWER_DATABASE_URL": f"postgresql://127.0.0.1:{unavailable_port}/viewer_rust"},
+         "connection failed"),
+    ]
+    for overrides, expected in cases:
+        env = base.copy()
+        for key, value in overrides.items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
+        result = subprocess.run([str(binary)], cwd=ROOT, env=env,
+                                capture_output=True, text=True, timeout=15)
+        output = result.stdout + result.stderr
+        assert result.returncode != 0, "Invalid database configuration must fail startup"
+        assert expected in output, "Missing sanitized database error category"
+        for secret in (env.get("VIEWER_DATABASE_PASSWORD"), env.get("VIEWER_DATABASE_URL")):
+            if secret:
+                assert secret not in output, "Database secret leaked in startup logs"
+    print("PASS startup failures: missing URL, wrong password, unreachable DB; no secrets logged")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--release", action="store_true")
@@ -117,3 +153,4 @@ if __name__ == "__main__":
         "viewer-app.exe" if os.name == "nt" else "viewer-app")
     for profile in ("dev", "prod"):
         check(profile, binary)
+    check_startup_failures(binary)

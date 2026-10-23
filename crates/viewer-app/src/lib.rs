@@ -1,4 +1,4 @@
-//! Viewer application boundaries. Only infrastructure is implemented in Step 1.
+//! Viewer application boundaries. HTTP and PostgreSQL infrastructure are implemented.
 pub mod api;
 pub mod auth;
 pub mod dicom;

@@ -13,3 +13,6 @@ tokio.workspace = true
 serde.workspace = true
 schemars.workspace = true
 
+sea-orm.workspace = true
+sea-orm-migration.workspace = true
+url.workspace = true

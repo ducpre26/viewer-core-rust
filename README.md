@@ -1,7 +1,12 @@
 # Viewer Core Rust
 
-Step 1 infrastructure bootstrap for the Java-to-Rust migration. Business modules,
-PostgreSQL and JVM/JNI are not implemented yet.
+[Hướng dẫn cấu trúc repo cho người mới học Rust](docs/REPOSITORY_GUIDE.md).
+
+[Các lệnh trong vòng đời phát triển](docs/DEVELOPMENT_COMMANDS.md) — chạy dev,
+kiểm tra, build release và xem thay đổi trước khi commit.
+
+Infrastructure for the Java-to-Rust migration, including PostgreSQL persistence.
+Business modules and JVM/JNI are not implemented yet.
 
 ## Run
 
@@ -20,7 +25,7 @@ Summer-web currently pulls in aide 0.16.0-alpha.4 for OpenAPI; it is locked too.
 | Endpoint | Purpose |
 |---|---|
 | `/ws/rest/health` | Process liveness |
-| `/ws/rest/ready` | Ready for the implemented infrastructure; no external dependencies yet |
+| `/ws/rest/ready` | Checks PostgreSQL connectivity |
 | `/ws/rest/docs/openapi.json` | Generated OpenAPI for the infrastructure routes |
 
 Default address: `127.0.0.1:8888`. Stop with Ctrl+C on Windows or SIGTERM/Ctrl+C on
@@ -73,7 +78,7 @@ dev/prod configuration, health/readiness, generated OpenAPI, unknown routes,
 scheduler startup, production JSON logging, and clean signal-driven shutdown.
 On Windows it creates a hidden private console to send Ctrl+C safely. The GitHub
 Actions workflow runs the same checks on Windows and Linux x86_64 when this
-project is hosted in its own repository. No Java runtime or database is required.
+project is hosted in its own repository. No Java runtime is required. PostgreSQL is mandatory (see below).
 
 Version-matched upstream references:
 [summer](https://docs.rs/summer/0.7.2/summer/),
@@ -82,3 +87,54 @@ Version-matched upstream references:
 
 Track actual completion and remaining validation in
 [Step 1](docs/step/step-01-rust-application.md).
+
+## Persistence (Step 02)
+
+PostgreSQL is mandatory. Startup connects, runs `SELECT 1`, then applies all
+pending SeaORM migrations before HTTP starts. Failure exits with status 1 and a
+sanitized error. `/health` remains process liveness; `/ready` queries PostgreSQL
+and returns 200 with `postgresql:up`, or 503 with `postgresql:down`.
+
+Set these environment variables before running any app/smoke/integration command:
+
+```powershell
+$env:VIEWER_DATABASE_URL='postgresql://127.0.0.1:5432/viewer_rust'
+$env:VIEWER_DATABASE_USER='postgres'
+# Supply VIEWER_DATABASE_PASSWORD through your local environment/secret manager.
+cargo run --locked -p viewer-app
+```
+
+`VIEWER_DATABASE_URL` is required. Credentials may be included in the URL
+(percent-encode reserved characters), or overridden by `VIEWER_DATABASE_USER`
+and `VIEWER_DATABASE_PASSWORD`. No credential is saved in the repository.
+`VIEWER_DATABASE_MAX_CONNECTIONS` defaults to 10; the minimum is 1.
+`VIEWER_DATABASE_TIMEOUT_SECONDS` defaults to 5 for connect/acquire/readiness.
+Both settings must be positive integers. SQL driver statement logging is disabled;
+driver error text and connection URLs are never printed by this adapter.
+
+Migration registration is `persistence::Migrator::migrations()`. It is currently
+empty; only SeaORM's `seaql_migrations` tracking table is created. Each later step
+adds its own entity mapping, migration, repository and tests. Do not edit applied
+migrations; register a new migration to evolve the schema. Do not import Java's
+whole schema. Startup runs pending migrations automatically and requires DDL
+permission. Run only one application instance during schema deployment; concurrent
+migration orchestration is outside this step.
+
+Repositories live under `persistence`, borrow `&impl ConnectionTrait`, and return
+`Result<_, DbErr>`. Application services own transaction boundaries using
+`TransactionTrait::begin()`, pass `&DatabaseTransaction` to participating
+repositories, then explicitly `commit()` or `rollback()`. Avoid nested transactions
+inside repositories and external network calls while holding a transaction.
+HTTP handlers must map errors without exposing driver text. The shared pool is
+closed explicitly after HTTP drains and scheduler shutdown completes.
+
+Run the real PostgreSQL integration test in addition to the standard checks:
+
+```text
+cargo test --workspace --locked -- --include-ignored
+python tools/smoke_app.py
+```
+
+CI provisions a dedicated PostgreSQL 18 instance on each Windows/Linux runner.
+Local PostgreSQL 18 database `viewer_rust` was created separately; no business
+tables are needed in Step 02.

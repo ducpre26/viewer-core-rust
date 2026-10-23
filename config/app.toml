@@ -10,7 +10,7 @@ doc_prefix = "/docs"
 [web.openapi.info]
 title = "Viewer Core Infrastructure"
 version = "0.1.0"
-description = "Step 1 infrastructure only; no business APIs implemented."
+description = "HTTP and PostgreSQL infrastructure; no business APIs implemented."
 
 [logger]
 level = "${VIEWER_LOG_LEVEL:info}"

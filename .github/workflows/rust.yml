@@ -8,14 +8,24 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      VIEWER_DATABASE_URL: postgresql://127.0.0.1:5432/viewer_rust
+      VIEWER_DATABASE_USER: postgres
+      VIEWER_DATABASE_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: ikalnytskyi/action-setup-postgres@v8
+        with:
+          database: viewer_rust
+          username: postgres
+          password: ci-only-password
+          postgres-version: '18'
       - run: rustup show
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
+      - run: cargo test --workspace --locked -- --include-ignored
       - run: cargo build --workspace --release --locked
       - run: python tools/smoke_app.py --release
