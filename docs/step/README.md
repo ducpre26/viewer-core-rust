@@ -42,13 +42,31 @@ Bắt đầu Step 1 ngay, không chờ Step 0. Step 0 giữ nguồn tham khảo 
 
 Entity/schema/repository được tạo tại step đầu tiên cần chúng, không mapping cả tám entity ở Step 2. Dependency dùng chung còn thiếu chỉ triển khai phần tối thiểu cần thiết, rồi hồi quy khi mở rộng. HTTP contract/error nghiệp vụ được chốt tại step tính năng; init chỉ có route hạ tầng.
 
+## Quy trình làm việc cho từng step
+
+Áp dụng từ Step 3: **chia việc rõ ràng → triển khai → kiểm tra → cập nhật tài liệu → commit riêng khi hoàn tất.**
+
+1. **Xác định phạm vi:** đọc tài liệu step và phần Java liên quan; ghi rõ kết quả cần đạt, dependency và tiêu chí hoàn thành.
+2. **Chia đầu việc:** tạo checklist theo thứ tự thực hiện trong tài liệu step. Mỗi việc phải có đầu ra cụ thể và cách kiểm chứng; chỉ đánh dấu sau khi thực sự hoàn thành. Mẫu: `- [ ] <Đầu việc> — đầu ra: <kết quả>; kiểm chứng: <lệnh hoặc kịch bản>`.
+3. **Triển khai:** làm lần lượt các đầu việc trong phạm vi step. Chỉ hỏi khi thiếu quyết định ảnh hưởng nghiệp vụ hoặc kiến trúc; tự xử lý chi tiết kỹ thuật thông thường.
+4. **Kiểm tra và sửa lỗi:** chạy format, lint, test, build và kiểm thử thực tế cần thiết; kiểm tra hồi quy phần bị ảnh hưởng. Không coi test bị bỏ qua hoặc chưa chạy là đạt.
+5. **Rà soát và cập nhật:** tự đọc lại thay đổi; cập nhật checklist, trạng thái, kết quả kiểm thử và phần còn thiếu trong tài liệu step. Nếu chưa đủ điều kiện, giữ `in_progress` hoặc `in_review`, chưa commit; dùng `blocked` khi không tiếp tục được và ghi rõ điều kiện gỡ chặn.
+6. **Commit khi hoàn tất:** khi đạt tiêu chí, đánh dấu `done` và tự tạo **một commit riêng cho step**, gồm code, test và tài liệu liên quan. Báo mã commit cùng kết quả kiểm tra.
+
+## Quy tắc commit
+
+- Mẫu: `feat(step-03): implement JVM JNI foundation`; dùng đúng mã step, kể cả `step-03a`.
+- Không commit riêng kế hoạch của step chưa hoàn tất.
+- Không gộp thay đổi của step khác vào commit; chỉ stage các thay đổi thuộc step đang hoàn tất và giữ nguyên phần việc khác chưa commit.
+- Chưa tự push hoặc chuyển sang step tiếp theo nếu chưa được yêu cầu.
+
 ## Cập nhật tiến độ
 
 Trạng thái chỉ nằm trong từng file: `not_started` → `in_progress` → `in_review` → `done`; dùng `blocked` khi không tiếp tục được.
 
 Sau mỗi phiên làm việc, cập nhật checkbox và mục **Tiến độ**: đã làm, việc tiếp theo, vướng mắc, kết quả kiểm tra kèm lệnh/file thực tế, ngày và người cập nhật. Nếu bị chặn, ghi điều kiện gỡ chặn. Giữ lại ghi chú quyết định/kết quả có giá trị khi tiếp tục phiên sau.
 
-Chỉ `done` khi checklist và kiểm tra hoàn thành đạt, có evidence thực tế và phê duyệt nếu gate yêu cầu. Không tự ghi pass hoặc approval. Việc sửa tài liệu không làm tăng tiến độ implementation; xem trạng thái thực tế trong từng file step.
+Chỉ `done` khi checklist và kiểm tra hoàn thành đạt, có evidence thực tế. Không tự ghi pass cho kiểm tra chưa chạy hoặc bị bỏ qua. Việc sửa tài liệu không làm tăng tiến độ implementation; xem trạng thái thực tế trong từng file step.
 
 ## Công nghệ và điểm còn mở
 
