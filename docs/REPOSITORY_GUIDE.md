@@ -1,8 +1,9 @@
 # Hướng dẫn cấu trúc repo Rust cho người mới
 
-Tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 3a (2026-10-26).
+Tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 4 (2026-10-26).
 Ứng dụng có HTTP, PostgreSQL, nền tảng JVM/JNI và middleware auth/session.
-Chưa triển khai CRUD hoặc thao tác DICOM nghiệp vụ.
+Đã có CRUD client/quyền và gán/bỏ gán quyền cho admin (UC-009).
+Chưa triển khai thao tác DICOM nghiệp vụ.
 
 ## 1. Một số khái niệm trước khi đọc
 
@@ -39,6 +40,8 @@ Chưa triển khai CRUD hoặc thao tác DICOM nghiệp vụ.
 │       ├── main.rs            Điểm khởi động chương trình
 │       ├── lib.rs             Khai báo các module dùng chung
 │       ├── api/mod.rs         Route HTTP, health/readiness, kiểm thử tích hợp
+│       ├── api/admin.rs       UC-009: CRUD client/quyền, mapping và guard admin
+│       ├── api/admin/tests.rs Contract HTTP và hậu điều kiện PostgreSQL cho UC-009
 │       ├── persistence/mod.rs Pool PostgreSQL và migration runner
 │       ├── auth/mod.rs        Middleware, session cache và guard; config/test ở cùng thư mục
 │       ├── domain/mod.rs      Principal, role và quy tắc permission
@@ -160,11 +163,11 @@ trong [tài liệu phát triển](DEVELOPMENT_COMMANDS.md) để cấp đúng ru
 | `connection()` | Cho lớp sử dụng mượn kết nối để truy vấn hoặc bắt đầu transaction. |
 | `check()` | Kiểm tra DB bằng SELECT 1 với thời gian chờ giới hạn. |
 | `close()` | Đóng pool khi ứng dụng dừng. |
-| `Migrator::migrations()` | Migration tạo client/session; startup dùng advisory lock trong transaction để tránh DDL đồng thời. |
+| `Migrator::migrations()` | Migration tạo client/session và permission/client_permission; startup dùng advisory lock trong transaction để tránh DDL đồng thời. |
 | `number(...)` | Đọc cấu hình số dương cho pool và timeout. |
 | `connection_error(...)` | Trả thông báo lỗi đã lược bỏ thông tin nhạy cảm. |
 
-Đã có entity/repository SeaORM `client`, `session` và migration tương ứng.
+Đã có entity/repository SeaORM `client`, `session`, `permission`, `client_permission` và migration tương ứng.
 Bảng `seaql_migrations` theo dõi migration. Các bảng nghiệp vụ khác được thêm
 khi step tương ứng cần dùng.
 

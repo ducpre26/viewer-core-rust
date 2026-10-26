@@ -27,6 +27,10 @@ Summer-web currently pulls in aide 0.16.0-alpha.4 for OpenAPI; it is locked too.
 | `/ws/rest/health` | Process liveness |
 | `/ws/rest/ready` | Checks PostgreSQL and, when enabled, JVM/facade readiness |
 | `/ws/rest/docs/openapi.json` | Generated OpenAPI for the infrastructure routes |
+| `/ws/rest/v1/admin/client`, `/ws/rest/v1/admin/client/{id}` | Admin client list/create/update/get/delete (Step 4) |
+| `/ws/rest/v1/admin/permission`, `/ws/rest/v1/admin/permission/{id}` | Admin permission catalog CRUD (Step 4) |
+| `/ws/rest/v1/admin/client/{id}/permission` | Admin client permission list/assign (Step 4) |
+| `/ws/rest/v1/admin/client/{id}/permission/{permissionId}` | Admin client permission removal (Step 4) |
 
 Default address: `127.0.0.1:8888`. Stop with Ctrl+C on Windows or SIGTERM/Ctrl+C on
 Linux. Summer's web server drains in-flight requests and its job plugin shuts
@@ -138,7 +142,9 @@ Both settings must be positive integers. SQL driver statement logging is disable
 driver error text and connection URLs are never printed by this adapter.
 
 Migration registration is `persistence::Migrator::migrations()`. Step 3a adds
-`client` and `session` alongside SeaORM's `seaql_migrations` tracking table. Each later step
+`client` and `session` alongside SeaORM's `seaql_migrations` tracking table. Step 4 adds
+`permission` and `client_permission`, unique/composite keys and cascading foreign keys.
+Each later step
 adds its own entity mapping, migration, repository and tests. Do not edit applied
 migrations; register a new migration to evolve the schema. Do not import Java's
 whole schema. Startup runs pending migrations automatically and requires DDL

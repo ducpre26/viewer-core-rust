@@ -7,7 +7,10 @@ use sea_orm_migration::prelude::*;
 use std::{env, time::Duration};
 
 pub mod client;
+pub mod client_permission;
 mod m20261026_auth;
+mod m20261026_permissions;
+pub mod permission;
 pub mod session;
 
 pub struct Migrator;
@@ -15,7 +18,10 @@ pub struct Migrator;
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![Box::new(m20261026_auth::Migration)]
+        vec![
+            Box::new(m20261026_auth::Migration),
+            Box::new(m20261026_permissions::Migration),
+        ]
     }
 }
 
