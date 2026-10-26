@@ -67,6 +67,30 @@ business rules, `persistence` for repository adapters, `auth` for session and
 permission checks, and `dicom` for the DICOM/JNI boundary. Empty modules declare
 ownership only; they do not claim any migrated capability.
 
+## Create viewer session (Step 8)
+
+`POST /ws/rest/client/link` accepts `storeUrl`, `storeAuth`, `studies`, `user`
+and `expireIn` (minutes), and returns `{link, session}`. Basic Auth and IP policy
+use Step 3a. The deprecated `POST /ws/rest/client/getlink` accepts `studyUIDs`
+(study-to-store map), `userID` and `expireIn`, and returns the Java URL envelope.
+Validation follows Java, including the legacy nested-store exceptions.
+
+New sessions use the shared short-term cache only; no SESSION row is inserted.
+Permission IDs are read from the client's current mappings when creating the
+session. With client security disabled, permissions are null. Basic sysadmin
+must also have a CLIENT row to create a session (otherwise 404), and receives
+only its explicitly assigned permission IDs.
+
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `VIEWER_DEFAULT_EXPIRE_MINUTES` | `60` | Default and maximum requested lifetime; missing/non-positive/over-limit `expireIn` uses this value. |
+| `VIEWER_PATH_PREFIX` | `/viewer?session=` | Viewer link prefix when CONFIG `PATH_PREFIX` is absent. |
+
+CONFIG `PATH_PREFIX` takes priority and shares the Step 5 cache/invalidation.
+Store credentials are included in `/link`'s session response as in Java; they
+are not logged. WADO metadata prefetch remains for Step 11.
+Source comparison and verification: [Step 8](docs/step/step-08-create-session.md).
+
 ## Authentication/session foundation (Step 3a)
 
 `auth::secure` wraps feature routes with the Java-compatible request filter,

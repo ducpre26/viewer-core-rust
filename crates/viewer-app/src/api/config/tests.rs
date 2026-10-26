@@ -1,4 +1,5 @@
 use super::*;
+use crate::persistence::Persistence;
 use crate::{
     auth::AuthConfig,
     persistence::{config as entity, session},
@@ -24,7 +25,10 @@ fn test_app(db: Persistence, disabled: bool) -> HttpRouter {
             admin_password: "fixture-password".into(),
         },
     );
-    HttpRouter::new().nest("/ws/rest", crate::api::router(db, None, auth).into())
+    HttpRouter::new().nest(
+        "/ws/rest",
+        crate::api::router(db, None, auth, crate::api::SessionConfig::default()).into(),
+    )
 }
 
 async fn call(

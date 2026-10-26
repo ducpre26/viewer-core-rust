@@ -1,5 +1,7 @@
 //! HTTP infrastructure; business routes belong to their migration steps.
 mod admin;
+mod client;
+pub use client::SessionConfig;
 mod config;
 mod response;
 use crate::dicom::Jvm;
@@ -59,11 +61,23 @@ async fn readiness(
     )
 }
 
-pub fn router(database: Persistence, jvm: Option<Jvm>, auth: crate::auth::Auth) -> Router {
+pub fn router(
+    database: Persistence,
+    jvm: Option<Jvm>,
+    auth: crate::auth::Auth,
+    session_config: SessionConfig,
+) -> Router {
+    let configs = crate::persistence::config::ConfigStore::new(database.clone());
     crate::auth::secure(
         Router::new()
             .merge(admin::router(auth.clone()))
-            .merge(config::router(database.clone(), auth.clone()))
+            .merge(config::router(configs.clone(), auth.clone()))
+            .merge(client::router(
+                database.clone(),
+                auth.clone(),
+                configs,
+                session_config,
+            ))
             .api_route("/health", get(health))
             .api_route(
                 "/ready",

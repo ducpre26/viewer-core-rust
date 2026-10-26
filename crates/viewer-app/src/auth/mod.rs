@@ -13,7 +13,7 @@ use base64::{
 use chrono::{DateTime, Utc};
 use moka::future::Cache;
 use sea_orm::{DbErr, EntityTrait};
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::BTreeSet, net::SocketAddr, sync::Arc, time::Duration};
 use summer_web::axum::{
     extract::{ConnectInfo, FromRequestParts, OriginalUri, RawPathParams, Request, State},
     http::{HeaderMap, HeaderValue, Method, StatusCode},
@@ -27,7 +27,7 @@ use tracing::Instrument;
 pub struct Auth {
     config: Arc<AuthConfig>,
     database: Persistence,
-    sessions: Cache<String, Arc<session::Model>>,
+    sessions: Cache<String, Arc<CachedSession>>,
     clients: Cache<String, client::Model>,
 }
 
@@ -36,7 +36,40 @@ pub struct Auth {
 pub struct SecurityContext {
     pub principal: Option<Principal>,
     pub session_id: Option<String>,
-    pub session: Option<Arc<session::Model>>,
+    pub session: Option<Arc<CachedSession>>,
+}
+
+/// Cache DTO preserves the original study set. Java only converts it to CSV
+/// when persisting a long-term session; commas, blanks and nulls survive here.
+#[derive(Clone)]
+pub struct CachedSession {
+    pub(crate) model: session::Model,
+    pub studies: BTreeSet<Option<String>>,
+}
+impl std::fmt::Debug for CachedSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("CachedSession { .. }")
+    }
+}
+
+impl std::ops::Deref for CachedSession {
+    type Target = session::Model;
+    fn deref(&self) -> &Self::Target {
+        &self.model
+    }
+}
+
+impl From<session::Model> for CachedSession {
+    fn from(model: session::Model) -> Self {
+        let studies = model
+            .studies
+            .split(',')
+            .map(|s| s.trim_matches(|c: char| c <= '\u{20}'))
+            .filter(|s| !s.is_empty())
+            .map(|s| Some(s.to_owned()))
+            .collect();
+        Self { model, studies }
+    }
 }
 
 #[derive(Debug)]
@@ -75,14 +108,14 @@ impl Auth {
         }
     }
 
-    pub async fn session(&self, id: &str) -> Result<Option<Arc<session::Model>>, DbErr> {
+    pub async fn session(&self, id: &str) -> Result<Option<Arc<CachedSession>>, DbErr> {
         self.session_at(id, Utc::now()).await
     }
     async fn session_at(
         &self,
         id: &str,
         now: DateTime<Utc>,
-    ) -> Result<Option<Arc<session::Model>>, DbErr> {
+    ) -> Result<Option<Arc<CachedSession>>, DbErr> {
         if let Some(value) = self.sessions.get(id).await {
             if value.expired_time > now {
                 return Ok(Some(value));
@@ -95,7 +128,7 @@ impl Auth {
             .await?
         {
             if value.expired_time > now {
-                let value = Arc::new(value);
+                let value = Arc::new(CachedSession::from(value));
                 self.sessions.insert(id.to_owned(), value.clone()).await;
                 return Ok(Some(value));
             }
@@ -108,9 +141,27 @@ impl Auth {
     }
     /// Shared with the later session lifecycle implementation.
     pub async fn cache_session(&self, value: session::Model) {
+        self.cache_created_session(value.into()).await;
+    }
+    pub(crate) async fn cache_created_session(&self, value: CachedSession) {
         self.sessions
             .insert(value.id.clone(), Arc::new(value))
             .await;
+    }
+    /// Use the same client cache as Basic authentication; permission mappings
+    /// are deliberately read afresh when taking a session snapshot.
+    pub(crate) async fn client_exists(&self, id: &str) -> Result<bool, DbErr> {
+        if self.clients.get(id).await.is_some() {
+            return Ok(true);
+        }
+        if let Some(value) = client::Entity::find_by_id(id)
+            .one(self.database.connection())
+            .await?
+        {
+            self.clients.insert(id.to_owned(), value).await;
+            return Ok(true);
+        }
+        Ok(false)
     }
     pub async fn invalidate_session(&self, id: &str) {
         self.sessions.invalidate(id).await;

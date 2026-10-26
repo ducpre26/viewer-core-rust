@@ -11,6 +11,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 HTTP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -53,7 +54,9 @@ def check(profile, binary, jni_env=None):
         env.update(jni_env)
     env.pop("RUST_LOG", None)
     env.update(SUMMER_ENV=profile, VIEWER_BIND="127.0.0.1", VIEWER_PORT=str(port),
-               VIEWER_LOG_LEVEL="info", VIEWER_CONFIG=str(ROOT / "config/app.toml"))
+               VIEWER_LOG_LEVEL="info", VIEWER_CONFIG=str(ROOT / "config/app.toml"),
+               VIEWER_CLIENT_SECURITY_DISABLED="true", VIEWER_DEFAULT_EXPIRE_MINUTES="7",
+               VIEWER_PATH_PREFIX="/smoke?session=")
     options = {}
     if os.name == "nt":
         import ctypes
@@ -95,6 +98,27 @@ def check(profile, binary, jni_env=None):
             for path in ("/health", "/ready"):
                 operation = spec["paths"]["/ws/rest" + path]["get"]
                 assert "200" in operation["responses"]
+            # Step 8: use the actual process/TCP stack and its shared session cache.
+            def post(path, body):
+                request = urllib.request.Request(base + path,
+                    data=json.dumps(body).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}, method="POST")
+                with HTTP.open(request, timeout=5) as response:
+                    assert response.status == 200
+                    return json.load(response)
+
+            created = post("/client/link", {"storeUrl": "http://store.invalid", "studies": ["1.2.3"]})
+            session = created["session"]
+            assert uuid.UUID(session["id"]).version == 4
+            assert created["link"] == "/smoke?session=" + session["id"]
+            assert session["permissions"] is None
+            assert session["studies"] == ["1.2.3"]
+            assert get("/v1/session/" + session["id"] + "/config")["header"]["code"] == 302
+            legacy = post("/client/getlink", {"studyUIDs": {"1.2.3": {"url": "http://store.invalid"}}})
+            assert legacy["header"]["code"] == 200
+            assert legacy["body"].startswith("/smoke?session=")
+            for path in ("/client/link", "/client/getlink"):
+                assert "post" in spec["paths"]["/ws/rest" + path]
             try:
                 get("/not-implemented")
                 raise AssertionError("Unknown route must return 404")
@@ -117,7 +141,7 @@ def check(profile, binary, jni_env=None):
             if profile == "prod":
                 events = [json.loads(line) for line in output.splitlines() if line.startswith("{")]
                 assert events, "Production logging must include JSON events"
-            print(f"PASS {profile} JNI={'on' if jni_env else 'off'}: health, readiness, OpenAPI, 404, logging, scheduler, graceful stop")
+            print(f"PASS {profile} JNI={'on' if jni_env else 'off'}: health, readiness, OpenAPI, session/link HTTP, 404, logging, scheduler, graceful stop")
         except Exception:
             logs.seek(0)
             print(logs.read().decode("utf-8", errors="replace"), file=sys.stderr)
@@ -137,6 +161,8 @@ def check_startup_failures(binary):
         sock.bind(("127.0.0.1", 0))
         unavailable_port = sock.getsockname()[1]
     cases = [
+        ({"VIEWER_DEFAULT_EXPIRE_MINUTES": "invalid"}, "must be an integer"),
+        ({"VIEWER_DEFAULT_EXPIRE_MINUTES": str(2**63 - 1)}, "out of range"),
         ({"VIEWER_CLIENT_SECURITY_DISABLED": "invalid"}, "must be true or false"),
         ({"VIEWER_DATABASE_URL": None}, "VIEWER_DATABASE_URL is required"),
         ({"VIEWER_DATABASE_PASSWORD": "smoke-invalid-password-7f38"}, "authentication failed"),
@@ -151,7 +177,7 @@ def check_startup_failures(binary):
             else:
                 env[key] = value
         result = subprocess.run([str(binary)], cwd=ROOT, env=env,
-                                capture_output=True, text=True, timeout=15)
+                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
         output = result.stdout + result.stderr
         assert result.returncode != 0, "Invalid configuration must fail startup"
         assert expected in output, "Missing sanitized startup error category"

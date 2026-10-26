@@ -24,6 +24,7 @@ jni = { version = "=0.21.1", features = ["invocation"] }
 serde_json = "1"
 sha2 = "0.10"
 chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 bcrypt = "0.19"
 moka = { version = "0.12", features = ["future"] }

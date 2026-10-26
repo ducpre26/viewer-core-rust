@@ -10,6 +10,13 @@ use viewer_app::{
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
+    let session_config = match api::SessionConfig::from_env() {
+        Ok(config) => config,
+        Err(message) => {
+            eprintln!("Session configuration error: {message}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
     let auth_config = match AuthConfig::from_env() {
         Ok(config) => config,
         Err(message) => {
@@ -47,7 +54,12 @@ async fn main() -> std::process::ExitCode {
     app.use_config_file(&config)
         .add_plugin(WebPlugin)
         .add_plugin(JobPlugin)
-        .add_router(api::router(database.clone(), jvm.clone(), auth));
+        .add_router(api::router(
+            database.clone(),
+            jvm.clone(),
+            auth,
+            session_config,
+        ));
     tokio::select! {
         _ = app.run() => {},
         _ = async {

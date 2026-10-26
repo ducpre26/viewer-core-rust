@@ -3,10 +3,7 @@ use super::response::*;
 use crate::{
     auth::Auth,
     domain::MODIFY_OVERLAY_CONFIG,
-    persistence::{
-        Persistence,
-        config::{ConfigStore, Model},
-    },
+    persistence::config::{ConfigStore, Model},
 };
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -114,7 +111,7 @@ async fn delete(Extension(store): Extension<ConfigStore>, Path(path): Path<Confi
     Ok(reply(200, 200, "Deleted", json!(path.id)))
 }
 
-pub fn router(db: Persistence, auth: Auth) -> Router {
+pub fn router(store: ConfigStore, auth: Auth) -> Router {
     let admin = Router::new()
         .api_route("/v1/admin/config", get(list).post(create).put(update))
         .api_route("/v1/admin/config/{id}", get(get_one).delete(delete))
@@ -135,7 +132,7 @@ pub fn router(db: Persistence, auth: Auth) -> Router {
     Router::new()
         .merge(admin)
         .merge(session)
-        .layer(Extension(ConfigStore::new(db)))
+        .layer(Extension(store))
 }
 
 #[cfg(test)]

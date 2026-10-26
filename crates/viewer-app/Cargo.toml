@@ -18,6 +18,7 @@ sea-orm-migration.workspace = true
 url.workspace = true
 dicom-jvm = { path = "../dicom-jvm" }
 chrono.workspace = true
+uuid.workspace = true
 base64.workspace = true
 bcrypt.workspace = true
 moka.workspace = true
