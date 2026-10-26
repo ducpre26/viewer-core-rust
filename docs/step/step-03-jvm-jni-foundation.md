@@ -1,5 +1,10 @@
 # Step 3 - Khởi tạo JVM/JNI và facade tối thiểu
 
+> Refactor TOML ngày 2026-10-26: module nhận typed config từ registry Summer;
+> giữ app.toml/profile/interpolation/RUST_LOG theo xác nhận người dùng.
+> Checklist/evidence bên dưới là lịch sử step; kết quả refactor mới nằm trong
+> [mục cấu hình](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config).
+
 ## Tính năng
 
 Sau khung Rust/DB, tạo kết nối JVM 25 và facade không Spring. Chưa đối chiếu hoặc triển khai toàn bộ parse/render/transcode/key-image/print.
@@ -26,7 +31,7 @@ Sau khung Rust/DB, tạo kết nối JVM 25 và facade không Spring. Chưa đ�
 - [x] Kiểm tra exception, local reference và attach/detach/shutdown dưới -Xcheck:jni trên Windows local, chưa cần DICOM corpus hoặc printer.
 - [x] Chỉ đóng foundation; byte/file transport, concurrency, cancellation, codec và print được kiểm thử tại step sử dụng và hồi quy ở Step 18.
 
-## Tiến độ
+## Tiến độ implementation trước quyết định TOML
 
 - Trạng thái: `done` — hoàn tất implementation và kiểm thử foundation trên Windows local, theo cùng cách ghi tiến độ của Step 2. CI Windows/Ubuntu chưa có kết quả; nếu CI phát hiện lỗi sẽ mở lại step để sửa.
 - Đã làm: Facade Java 25 độc lập, thin JAR và manifest SHA-256; API 1 chỉ công bố capabilities rỗng. Crate `dicom-jvm` khóa `jni-rs 0.21.1` với Invocation API, xác thực Java 25 và artifact trước khi tạo một JVM/process. Worker riêng giữ `JNIEnv`, local frame và global reference; Tokio nhận kết quả qua kênh có giới hạn. Readiness phối hợp PostgreSQL/JVM, exception được clear và lược bỏ dữ liệu nhạy cảm, shutdown có deadline và lỗi fatal thoát process. CI matrix, hướng dẫn và log kiểm thử đã bổ sung.
@@ -59,7 +64,7 @@ Sau khung Rust/DB, tạo kết nối JVM 25 và facade không Spring. Chưa đ�
 
 - Tạo crate `crates/dicom-jvm`, được `viewer-app::dicom` sử dụng; giữ mọi JNI type, reference và signature trong crate này. Chỉ tạo thêm crate khác khi có trách nhiệm thực tế, không tạo tầng raw JNI chưa cần thiết.
 - Đối chiếu tài liệu jni-rs theo phiên bản, chọn feature Invocation API và khóa phiên bản thực tế trong Cargo.lock. Chưa coi một phiên bản crate là đã chọn trong giai đoạn chuẩn bị.
-- Đề xuất cấu hình bật/tắt bằng `VIEWER_JNI_ENABLED`, mặc định tắt để ứng dụng nền tảng chạy được khi chưa dùng DICOM. Khi bật, bắt buộc runtime explicit qua `PACS_JAVA_HOME` hoặc `PACS_LIBJVM_PATH`; nếu cấp cả hai phải kiểm tra chúng chỉ cùng runtime. Không fallback sang Java trên PATH.
+- Bật/tắt bằng `jni.enabled` trong TOML, mặc định false. Khi bật, runtime explicit qua `jni.java_home` hoặc `jni.libjvm_path`; nếu cấp cả hai phải chỉ cùng runtime. Nhận typed config từ registry Summer; không đọc/ghi env làm bridge và không dò Java trên PATH. Code/fixture/CI đã chuyển theo contract TOML; cơ chế profile/interpolation/RUST_LOG của framework giữ nguyên.
 - Bổ sung cấu hình đường dẫn facade/dependency, temp/native directory và giới hạn JVM; xác thực trước khi tạo JVM. Classpath dùng dấu phân cách của OS, kiểm tra artifact/manifest và Java major version 25.
 - Ghi riêng các giá trị heap/direct memory, timeout và giới hạn thử nghiệm vào evidence. P1–P4 vẫn chưa chốt cho production; không biến giá trị thử thành quyết định đã duyệt.
 

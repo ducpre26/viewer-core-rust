@@ -18,3 +18,24 @@ level = "${VIEWER_LOG_LEVEL:info}"
 format = "compact"
 time_style = "utc"
 
+# These sections use the same Summer TOML/profile registry as web and logger.
+# Environment values are optional, and only used through these placeholders.
+[database]
+url = "${VIEWER_DATABASE_URL:postgresql://127.0.0.1:5432/viewer_rust}"
+username = "${VIEWER_DATABASE_USER:postgres}"
+password = "${VIEWER_DATABASE_PASSWORD:REPLACE_WITH_LOCAL_DB_PASSWORD}"
+max_connections = ${VIEWER_DATABASE_MAX_CONNECTIONS:10}
+timeout_seconds = ${VIEWER_DATABASE_TIMEOUT_SECONDS:5}
+
+[auth]
+client_security_disabled = ${VIEWER_CLIENT_SECURITY_DISABLED:false}
+admin_username = "${VIEWER_ADMIN_USERNAME:sysadmin}"
+admin_password = "${VIEWER_ADMIN_PASSWORD:sysadmin}"
+
+[session]
+default_expire_minutes = ${VIEWER_DEFAULT_EXPIRE_MINUTES:60}
+path_prefix = "${VIEWER_PATH_PREFIX:/viewer?session=}"
+
+[jni]
+enabled = false
+

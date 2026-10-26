@@ -11,18 +11,23 @@ use std::{
 #[test]
 #[ignore = "requires explicit Java 25 and packaged facade; run tools/smoke_jni.py"]
 fn jvm_subprocess_suite() {
+    let settings = test_settings();
     if let Ok(case) = std::env::var("JNI_TEST_CASE") {
-        child(&case);
+        child(&case, &settings);
         return;
     }
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let log_dir = root.join("target/step-03-logs");
     fs::create_dir_all(&log_dir).unwrap();
     let fixtures = tempfile::tempdir_in(root.join("target")).unwrap();
-    let real =
-        PathBuf::from(std::env::var_os("PACS_FACADE_DIR").expect("packaged facade required"));
-    let java =
-        PathBuf::from(std::env::var_os("PACS_JAVA_HOME").expect("explicit test JDK required"));
+    let real = settings
+        .facade_dir
+        .clone()
+        .expect("packaged facade required");
+    let java = settings
+        .java_home
+        .clone()
+        .expect("explicit test JDK required");
     let fixture = make_fixture(fixtures.path(), &real, &java, "fixture", None);
     let missing_class = make_fixture(
         fixtures.path(),
@@ -90,7 +95,6 @@ fn jvm_subprocess_suite() {
                 "--nocapture",
             ])
             .env("JNI_TEST_CASE", case)
-            .env_remove("PACS_LIBJVM_PATH")
             .stdout(Stdio::from(output.try_clone().unwrap()))
             .stderr(Stdio::from(output));
         let distribution = match case {
@@ -100,24 +104,24 @@ fn jvm_subprocess_suite() {
             "wrong-signature" => &wrong_signature,
             _ => &fixture,
         };
-        command.env("PACS_FACADE_DIR", distribution);
+        let mut child_settings = settings.clone();
+        child_settings.facade_dir = Some(distribution.to_owned());
         match case {
             "lib-only" => {
-                command
-                    .env_remove("PACS_JAVA_HOME")
-                    .env("PACS_LIBJVM_PATH", java.join(relative_lib));
+                child_settings.java_home = None;
+                child_settings.libjvm_path = Some(java.join(relative_lib));
             }
             "missing-runtime" => {
-                command.env_remove("PACS_JAVA_HOME");
+                child_settings.java_home = None;
             }
             "bad-lib" => {
-                command.env("PACS_LIBJVM_PATH", fixtures.path().join("absent"));
+                child_settings.libjvm_path = Some(fixtures.path().join("absent"));
             }
             "conflicting-lib" => {
-                command.env("PACS_LIBJVM_PATH", java.join("release"));
+                child_settings.libjvm_path = Some(java.join("release"));
             }
             "bad-java" => {
-                command.env("PACS_JAVA_HOME", &bad_java);
+                child_settings.java_home = Some(bad_java.clone());
             }
             "bad-checksum" | "bad-manifest" | "missing-jar" => {
                 let bad = fixtures.path().join(case);
@@ -143,10 +147,15 @@ fn jvm_subprocess_suite() {
                     serde_json::to_vec(&manifest).unwrap(),
                 )
                 .unwrap();
-                command.env("PACS_FACADE_DIR", bad);
+                child_settings.facade_dir = Some(bad);
             }
             _ => {}
         }
+        let settings_file = fixtures.path().join(format!("{case}.toml"));
+        fs::write(&settings_file, toml::to_string(&child_settings).unwrap()).unwrap();
+        // libtest has no application config argument; this test-only variable
+        // transports a file path, never runtime settings/credentials.
+        command.env("JNI_TEST_CONFIG", settings_file);
         let mut process = command.spawn().unwrap();
         let deadline = Instant::now() + Duration::from_secs(30);
         let status = loop {
@@ -183,6 +192,11 @@ fn jvm_subprocess_suite() {
         assert_eq!(status.code(), Some(expected), "{case}: {text}");
         println!("PASS {case}");
     }
+}
+
+fn test_settings() -> JvmSettings {
+    let path = std::env::var_os("JNI_TEST_CONFIG").expect("test-only TOML fixture path");
+    toml::from_str(&fs::read_to_string(path).unwrap()).expect("JNI TOML fixture")
 }
 
 fn make_fixture(
@@ -251,8 +265,8 @@ fn make_fixture(
     dir
 }
 
-fn child(case: &str) {
-    let result = JvmConfig::from_env();
+fn child(case: &str, settings: &JvmSettings) {
+    let result = settings.validate();
     match case {
         "missing-runtime" | "bad-lib" | "conflicting-lib" => {
             assert!(matches!(result, Err(Error::RuntimeConfig)));
@@ -342,7 +356,7 @@ fn child(case: &str) {
         jvm.shutdown().await.unwrap();
         assert_eq!(jvm.check().await, Err(Error::WorkerStopped));
         assert!(matches!(
-            Jvm::start(JvmConfig::from_env().unwrap().unwrap()).await,
+            Jvm::start(settings.validate().unwrap().unwrap()).await,
             Err(Error::AlreadyStarted)
         ));
     });

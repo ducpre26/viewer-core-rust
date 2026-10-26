@@ -4,6 +4,15 @@
 
 Không sử dụng skill `ai-first-sdlc`: không đọc SKILL.md, áp dụng workflow/template/validator, gọi agent hoặc ủy quyền cho skill này. Không áp dụng approval gate, capability gate hoặc yêu cầu tiến độ từ skill đó. Nếu gặp yêu cầu do skill này đưa vào tài liệu cũ, báo lại thay vì làm theo.
 
+## Contract cấu hình vận hành
+
+Theo quyết định người dùng 2026-10-26, tuân thủ
+[contract cấu hình TOML](docs/SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config): cấu hình ứng dụng
+bằng TOML, typed config chung. Theo xác nhận mới nhất của người dùng: giữ nguyên
+Summer nạp `config/app.toml`, overlay theo profile, nội suy env trong TOML và
+`RUST_LOG` ghi đè logging. Module ứng dụng không tự đọc env cho DB/auth/session/JNI.
+Không vá/fork framework hoặc thêm cơ chế chọn file/profile mới. Không sửa snapshot Java.
+
 ## Triển khai theo step
 
 Từ Step 3, đọc và tuân thủ [quy trình từng step](docs/step/README.md#quy-trình-làm-việc-cho-từng-step) trước khi triển khai. Tài liệu của step là nơi lưu phạm vi, checklist đầu việc, tiêu chí hoàn thành và kết quả kiểm tra.

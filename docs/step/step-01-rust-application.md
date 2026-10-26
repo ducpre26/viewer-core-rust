@@ -1,5 +1,10 @@
 # Step 1 - Khởi tạo Rust application
 
+> Refactor TOML ngày 2026-10-26: module nhận typed config từ registry Summer;
+> giữ app.toml/profile/interpolation/RUST_LOG theo xác nhận người dùng.
+> Checklist/evidence bên dưới là lịch sử step; kết quả refactor mới nằm trong
+> [mục cấu hình](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config).
+
 ## Tính năng
 
 Khởi tạo Rust theo công nghệ đã chốt. Có thể bắt đầu ngay; không cần chạy Java, đối chiếu API nghiệp vụ hay hoàn tất Step 0.
@@ -23,7 +28,7 @@ Không cần khảo sát Java ở bước init. Dùng [quyết định T1–T6](
 - [x] Ứng dụng build/start/stop sạch; health và OpenAPI hạ tầng hoạt động trên Windows.
 - [x] Cấu hình, logging và CI smoke test pass; không cần Java runtime, fixture hay inventory để đóng step. Kết quả CI Windows/Linux và review được người dùng xác nhận ngày 2026-10-23; chưa có URL run để đối chiếu độc lập.
 
-## Tiến độ
+## Tiến độ implementation trước quyết định TOML
 
 - Trạng thái: `done`
 - Đã làm: Workspace `crates/viewer-app`, năm ranh giới module, Summer WebPlugin + JobPlugin, cấu hình dev/prod và biến môi trường, tracing JSON ở prod, route `/ws/rest/health`, `/ws/rest/ready`, `/ws/rest/docs/openapi.json`. Chưa đăng ký job nghiệp vụ hoặc adapter DB/JVM. Hướng dẫn tại [README](../../README.md).

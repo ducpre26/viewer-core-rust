@@ -19,7 +19,9 @@ use summer_web::{
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize, summer::config::Configurable)]
+#[config_prefix = "session"]
+#[serde(default, deny_unknown_fields)]
 pub struct SessionConfig {
     pub default_expire_minutes: i64,
     pub path_prefix: String,
@@ -35,27 +37,10 @@ impl Default for SessionConfig {
 }
 
 impl SessionConfig {
-    pub fn from_env() -> std::result::Result<Self, &'static str> {
-        let mut config = Self::default();
-        match std::env::var("VIEWER_DEFAULT_EXPIRE_MINUTES") {
-            Ok(value) => {
-                config.default_expire_minutes = value
-                    .parse()
-                    .map_err(|_| "VIEWER_DEFAULT_EXPIRE_MINUTES must be an integer")?
-            }
-            Err(std::env::VarError::NotPresent) => {}
-            Err(_) => return Err("Invalid VIEWER_DEFAULT_EXPIRE_MINUTES"),
-        }
-        // Validate once at startup; no panic or invalid timestamps per request.
-        config
-            .expiry(None, Utc::now())
+    pub fn validate(&self) -> std::result::Result<(), &'static str> {
+        self.expiry(None, Utc::now())
             .map_err(|_| "Session expiry configuration out of range")?;
-        match std::env::var("VIEWER_PATH_PREFIX") {
-            Ok(value) => config.path_prefix = value,
-            Err(std::env::VarError::NotPresent) => {}
-            Err(_) => return Err("Invalid VIEWER_PATH_PREFIX"),
-        }
-        Ok(config)
+        Ok(())
     }
 
     fn expiry(

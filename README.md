@@ -10,6 +10,8 @@ JVM/JNI foundation is implemented; business DICOM operations are not implemented
 
 ## Run
 
+Sao chép `config/app-dev.example.toml` thành `config/app-dev.toml`, điền DB/user/password và Basic admin trước khi chạy.
+
 Install Rust through rustup and the native build tools (MSVC C++ Build Tools on
 Windows; a C/C++ compiler and linker on Linux x86_64). Run from this directory:
 
@@ -38,27 +40,30 @@ down the in-memory scheduler. No business jobs are registered.
 
 ## Configuration
 
-`config/app.toml` is the base configuration. `SUMMER_ENV=prod` additionally loads
-`config/app-prod.toml`, enabling JSON logs and binding to `0.0.0.0` by default.
-Use `SUMMER_ENV=dev` for local development. Environment overrides:
+Dùng cơ chế mặc định của Summer, không fork/patch framework:
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `VIEWER_BIND` | `127.0.0.1` in dev | HTTP bind address |
-| `VIEWER_PORT` | `8888` | HTTP port; choose another port if Java is running |
-| `VIEWER_LOG_LEVEL` | `info` | Tracing level |
-| `VIEWER_CONFIG` | `config/app.toml` | Alternative base configuration file |
+- `config/app.toml`: cấu hình nền.
+- `config/app-dev.toml`, `app-test.toml`, `app-prod.toml`: overlay theo profile;
+  mặc định dev, chọn bằng `SUMMER_ENV` như trước.
+- Giữ `.env`/placeholder `${NAME:default}` trong TOML và `RUST_LOG` override.
+- DB/auth/session/JNI nhận typed config từ cùng registry với HTTP/logger;
+  module không tự đọc `VIEWER_*`/`PACS_*` hoặc gọi `from_env()`.
 
-Summer also honors `RUST_LOG`; when set, it takes precedence over
-`VIEWER_LOG_LEVEL`. The smoke test clears inherited `RUST_LOG` so it can verify
-the configured log level.
+Local PowerShell, chạy từ root repo:
 
-Example PowerShell: `$env:VIEWER_PORT='8889'; cargo run --locked -p viewer-app`.
-Example Linux: `SUMMER_ENV=prod VIEWER_PORT=8889 ./target/release/viewer-app`.
-Keep `config/` alongside the working directory when deploying. Summer reads the
-default configuration during builder creation even with a custom config path.
-Request URI/header/body logging is deliberately not enabled, to avoid recording
-session query parameters or medical data as business routes are introduced.
+```powershell
+Copy-Item config/app-dev.example.toml config/app-dev.toml
+# Edit database.url/username/password and auth.admin_password, then:
+cargo run --locked -p viewer-app
+```
+
+[File mẫu](config/app-dev.example.toml) dùng literal, cổng 8889; không cần khai
+báo từng biến môi trường. File `app-dev.toml` được gitignore để giữ mật khẩu local.
+`config/app-prod.toml` vẫn là overlay production hiện có. Không có CLI `--config`
+mới; giữ thư mục config cạnh working directory khi deploy.
+
+Schema/default/validation và phạm vi kiểm thử tại
+[contract TOML](docs/SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config).
 
 ## Boundaries
 
@@ -81,10 +86,12 @@ session. With client security disabled, permissions are null. Basic sysadmin
 must also have a CLIENT row to create a session (otherwise 404), and receives
 only its explicitly assigned permission IDs.
 
-| Environment variable | Default | Purpose |
+| TOML key | Default | Purpose |
 |---|---|---|
-| `VIEWER_DEFAULT_EXPIRE_MINUTES` | `60` | Default and maximum requested lifetime; missing/non-positive/over-limit `expireIn` uses this value. |
-| `VIEWER_PATH_PREFIX` | `/viewer?session=` | Viewer link prefix when CONFIG `PATH_PREFIX` is absent. |
+| `session.default_expire_minutes` | `60` | Default and maximum requested lifetime; missing/non-positive/over-limit `expireIn` uses this value. |
+| `session.path_prefix` | `/viewer?session=` | Viewer link prefix when CONFIG `PATH_PREFIX` is absent. |
+
+SessionConfig nhận hai khóa này từ registry TOML của Summer.
 
 CONFIG `PATH_PREFIX` takes priority and shares the Step 5 cache/invalidation.
 Store credentials are included in `/link`'s session response as in Java; they
@@ -99,11 +106,12 @@ CORS and response headers. Features attach `require_admin` or
 session access does not grant a Basic admin role. No business or fixture-seeding
 endpoint is added by this step.
 
-| Variable | Java-compatible default | Purpose |
-|---|---|---|
-| `VIEWER_CLIENT_SECURITY_DISABLED` | `false` | Bypass client Basic and permission checks; session validation and admin Basic remain active |
-| `VIEWER_ADMIN_USERNAME` | `sysadmin` | Configured Basic admin identity |
-| `VIEWER_ADMIN_PASSWORD` | `sysadmin` | Configured Basic admin credential; supply through the environment for deployment |
+| TOML key | Contract |
+|---|---|
+| `auth.client_security_disabled` | Default false; bypass client Basic/permission only; session validation and admin Basic remain active. |
+| `auth.admin_username`, `auth.admin_password` | Strings from effective TOML; defaults remain sysadmin as before; set explicit credentials for deployment. |
+
+AuthConfig nhận TOML; middleware business rules giữ nguyên Step 3a.
 
 Startup adds `client` and `session` via transactional migrations, serialized
 with a PostgreSQL advisory lock. Auth caches clients for 600 minutes (10 entries)
@@ -148,22 +156,11 @@ pending SeaORM migrations before HTTP starts. Failure exits with status 1 and a
 sanitized error. `/health` remains process liveness; `/ready` queries PostgreSQL
 and returns 200 with `postgresql:up`, or 503 with `postgresql:down`.
 
-Set these environment variables before running any app/smoke/integration command:
-
-```powershell
-$env:VIEWER_DATABASE_URL='postgresql://127.0.0.1:5432/viewer_rust'
-$env:VIEWER_DATABASE_USER='postgres'
-# Supply VIEWER_DATABASE_PASSWORD through your local environment/secret manager.
-cargo run --locked -p viewer-app
-```
-
-`VIEWER_DATABASE_URL` is required. Credentials may be included in the URL
-(percent-encode reserved characters), or overridden by `VIEWER_DATABASE_USER`
-and `VIEWER_DATABASE_PASSWORD`. No credential is saved in the repository.
-`VIEWER_DATABASE_MAX_CONNECTIONS` defaults to 10; the minimum is 1.
-`VIEWER_DATABASE_TIMEOUT_SECONDS` defaults to 5 for connect/acquire/readiness.
-Both settings must be positive integers. SQL driver statement logging is disabled;
-driver error text and connection URLs are never printed by this adapter.
+`[database]` trong TOML chứa `url`, `username`, `password`,
+`max_connections` (default 10, >0) và `timeout_seconds` (default 5, >0).
+URL không nhúng credential; code encode hai trường credential riêng và giữ nguyên
+password. Cấu hình được validate trước khi mở pool; driver SQL logging vẫn tắt.
+Không in config/driver text/URL/credential vào lỗi.
 
 Migration registration is `persistence::Migrator::migrations()`. Step 3a adds
 `client` and `session` alongside SeaORM's `seaql_migrations` tracking table. Step 4 adds
@@ -196,8 +193,8 @@ tables are needed in Step 02.
 
 ## JVM/JNI (Step 03)
 
-JNI defaults to disabled. Enable with `VIEWER_JNI_ENABLED=true` and the explicit
-runtime, artifact and limit settings in [the adapter guide](crates/dicom-jvm/README.md).
+JNI defaults to disabled. Dùng `jni.enabled=true` trong TOML và
+các khóa runtime/artifact/limit in [the adapter guide](crates/dicom-jvm/README.md).
 Build the Java 25 [facade](java/dicom-facade/README.md) first. It advertises API 1
 and empty operation/codec lists. The adapter pins jni-rs 0.21.1 with invocation,
 validates the distribution/checksums, and runs synchronous JNI on a dedicated worker.

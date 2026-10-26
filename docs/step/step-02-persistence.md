@@ -1,5 +1,10 @@
 # Step 2 - Kết nối PostgreSQL và nền tảng persistence
 
+> Refactor TOML ngày 2026-10-26: module nhận typed config từ registry Summer;
+> giữ app.toml/profile/interpolation/RUST_LOG theo xác nhận người dùng.
+> Checklist/evidence bên dưới là lịch sử step; kết quả refactor mới nằm trong
+> [mục cấu hình](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config).
+
 ## Tính năng
 
 Sau Step 1, kết nối PostgreSQL riêng bằng SeaORM. Chưa mapping tám entity hoặc import toàn bộ schema Java.
@@ -12,7 +17,7 @@ Chưa cần đối chiếu schema Java. Đọc [entity model](../../../1pacs-vie
 
 ## Việc cần làm
 
-- [x] Cấu hình database URL/credential qua môi trường, kết nối và connection pool SeaORM; không log secret.
+- [x] Baseline cũ: URL/credential qua môi trường, pool SeaORM và không log secret. Refactor 2026-10-26 chuyển sang `[database]` bind qua registry TOML của Summer; kết quả hồi quy tại mục cấu hình tham chiếu kỹ thuật.
 - [x] Chuẩn bị migration runner và quy ước repository/transaction; chưa tạo bảng nghiệp vụ.
 - [x] Đưa kiểm tra kết nối DB vào readiness khi DB được bật; đóng pool khi shutdown.
 - [x] Để step đầu tiên cần entity chịu trách nhiệm mapping schema/migration/repository của entity đó; step sau tái sử dụng hoặc mở rộng có kiểm thử.
@@ -23,7 +28,7 @@ Chưa cần đối chiếu schema Java. Đọc [entity model](../../../1pacs-vie
 - [x] Migration runner chạy được với chưa có migration nghiệp vụ; readiness/shutdown đúng.
 - [x] Không yêu cầu CRUD/constraint test cho tám entity ở step này; test đó đi cùng tính năng tạo/sử dụng entity.
 
-## Tiến độ
+## Tiến độ implementation trước quyết định TOML
 
 - Trạng thái: `done` — hoàn tất implementation và kiểm thử Windows local.
 - Quyết định người dùng 2026-10-23: DB bắt buộc; không kết nối được thì dừng ứng dụng; migration tự chạy trước HTTP. Đã tạo database riêng `viewer_rust` trên local port 5432; credential chỉ cấp qua môi trường.

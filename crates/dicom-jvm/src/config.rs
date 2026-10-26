@@ -1,5 +1,5 @@
 use crate::{Capabilities, Error};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -27,14 +27,33 @@ struct Manifest {
     artifacts: BTreeMap<String, String>,
 }
 
-impl JvmConfig {
+/// Raw deployment settings. The application deserializes [jni] using its own
+/// framework registry and passes this value into the adapter.
+#[derive(Clone, Default, Deserialize, Serialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct JvmSettings {
+    pub enabled: bool,
+    pub java_home: Option<PathBuf>,
+    pub libjvm_path: Option<PathBuf>,
+    pub facade_dir: Option<PathBuf>,
+    pub temp_dir: Option<PathBuf>,
+    pub native_dir: Option<PathBuf>,
+    pub xms_mb: Option<u64>,
+    pub xmx_mb: Option<u64>,
+    pub direct_mb: Option<u64>,
+    pub timeout_ms: Option<u64>,
+    pub shutdown_ms: Option<u64>,
+    pub check_jni: Option<bool>,
+}
+
+impl JvmSettings {
     /// Returns None only when JNI is explicitly disabled or unset.
-    pub fn from_env() -> Result<Option<Self>, Error> {
-        if !boolean("VIEWER_JNI_ENABLED", false)? {
+    pub fn validate(&self) -> Result<Option<JvmConfig>, Error> {
+        if !self.enabled {
             return Ok(None);
         }
-        let home = env::var_os("PACS_JAVA_HOME").map(PathBuf::from);
-        let explicit_lib = env::var_os("PACS_LIBJVM_PATH").map(PathBuf::from);
+        let home = self.java_home.clone();
+        let explicit_lib = self.libjvm_path.clone();
         let relative = if cfg!(windows) {
             "bin/server/jvm.dll"
         } else {
@@ -79,16 +98,16 @@ impl JvmConfig {
                 return Err(Error::RuntimeConfig);
             }
         }
-        let distribution = canonical(&required_path("PACS_FACADE_DIR")?)?;
+        let distribution = canonical(&required_path(&self.facade_dir)?)?;
         let classpath = verify_distribution(&distribution)?;
-        let temp = canonical(&required_path("PACS_JVM_TEMP_DIR")?)?;
-        let native = canonical(&required_path("PACS_JVM_NATIVE_DIR")?)?;
+        let temp = canonical(&required_path(&self.temp_dir)?)?;
+        let native = canonical(&required_path(&self.native_dir)?)?;
         if !temp.is_dir() || !native.is_dir() {
             return Err(Error::RuntimeConfig);
         }
-        let xms = number("PACS_JVM_XMS_MB")?;
-        let xmx = number("PACS_JVM_XMX_MB")?;
-        let direct = number("PACS_JVM_DIRECT_MB")?;
+        let xms = number(self.xms_mb)?;
+        let xmx = number(self.xmx_mb)?;
+        let direct = number(self.direct_mb)?;
         if xms > xmx {
             return Err(Error::RuntimeConfig);
         }
@@ -104,40 +123,28 @@ impl JvmConfig {
             // Rust owns process signals; Java must not replace the HTTP shutdown handlers.
             "-Xrs".into(),
         ];
-        if boolean("PACS_JVM_CHECK_JNI", cfg!(debug_assertions))? {
+        if self.check_jni.unwrap_or(cfg!(debug_assertions)) {
             options.push("-Xcheck:jni".into());
         }
-        Ok(Some(Self {
+        Ok(Some(JvmConfig {
             libjvm,
             options,
-            timeout: Duration::from_millis(number("PACS_JVM_TIMEOUT_MS")?),
-            shutdown_timeout: Duration::from_millis(number("PACS_JVM_SHUTDOWN_MS")?),
+            timeout: Duration::from_millis(number(self.timeout_ms)?),
+            shutdown_timeout: Duration::from_millis(number(self.shutdown_ms)?),
         }))
     }
 }
 
-fn required_path(name: &str) -> Result<PathBuf, Error> {
-    env::var_os(name)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
+fn required_path(value: &Option<PathBuf>) -> Result<PathBuf, Error> {
+    value
+        .as_ref()
+        .filter(|path| !path.as_os_str().is_empty())
+        .cloned()
         .ok_or(Error::RuntimeConfig)
 }
 
-fn number(name: &str) -> Result<u64, Error> {
-    env::var(name)
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .filter(|value| *value > 0)
-        .ok_or(Error::RuntimeConfig)
-}
-
-fn boolean(name: &str, default: bool) -> Result<bool, Error> {
-    match env::var(name) {
-        Ok(value) if value == "true" => Ok(true),
-        Ok(value) if value == "false" => Ok(false),
-        Err(env::VarError::NotPresent) => Ok(default),
-        _ => Err(Error::RuntimeConfig),
-    }
+fn number(value: Option<u64>) -> Result<u64, Error> {
+    value.filter(|value| *value > 0).ok_or(Error::RuntimeConfig)
 }
 
 fn canonical(path: &Path) -> Result<PathBuf, Error> {

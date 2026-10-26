@@ -101,6 +101,168 @@ Source code Spring hiện tại là nguồn đối chiếu kỹ thuật và hàn
 | UC-013 | In ảnh qua máy in DICOM | `PRINTER`, `SESSION` | Có; dcm4che/DIMSE Print transaction trong Java facade |
 | UC-014 | Theo dõi license và người dùng đồng thời | Không có entity bền vững trong entity model; runtime state/config | Không |
 
+<a id="toml-config"></a>
+
+### 2.4 Contract cấu hình vận hành
+
+Quyết định người dùng ngày 2026-10-26, sau khi xác nhận phạm vi: dùng TOML
+cho các thành phần đã triển khai, **giữ nguyên cơ chế nạp cấu hình của Summer**.
+Không vá/fork framework và không thêm CLI chọn file mới.
+
+#### Nạp cấu hình và thứ tự ưu tiên
+
+- Giữ `App::new()`: Summer nạp `config/app.toml`, sau đó overlay cùng thư mục
+  theo profile (`app-dev.toml`, `app-test.toml`, `app-prod.toml`). Profile mặc
+  định dev, `SUMMER_ENV` chọn profile như framework hiện có.
+- Giữ cơ chế `.env`/nội suy `${NAME}` và `${NAME:default}` của Summer. Không
+  thêm loader dotenv hoặc tự nội suy lần thứ hai trong code ứng dụng.
+- Giữ `RUST_LOG` ghi đè logging. `[web]`, `[logger]`, OpenAPI, job và shutdown
+  dùng framework/dependency hiện tại, không thay đổi default bootstrap.
+- Sau khi framework nạp/merge, `AppConfig::from_registry()` bind `[database]`,
+  `[auth]`, `[session]`, `[jni]` từ **cùng registry**. Module không tự đọc
+  `VIEWER_*`/`PACS_*` hay gọi `from_env()` để lấy giá trị cấu hình.
+- Env chỉ có tác dụng khi framework sử dụng nó, ví dụ placeholder trong TOML,
+  profile/logging. Literal trong file overlay không bị module đọc env ghi đè.
+- Không triển khai `--config`, không yêu cầu một file độc lập thay thế overlay.
+  Chạy từ root repo để tìm `config/`. Đường dẫn JNI tương đối vẫn tính theo cwd
+  như Step 3; không đổi sang thư mục file TOML.
+
+#### File mẫu và chạy local
+
+Mẫu duy nhất thêm mới: [config/app-dev.example.toml](../config/app-dev.example.toml).
+Sao chép thành `config/app-dev.toml` (đã gitignore), sửa URL/user/password DB và
+Basic admin. File mẫu dùng literal, local không cần khai báo từng biến env.
+
+```powershell
+Copy-Item config/app-dev.example.toml config/app-dev.toml
+# Edit config/app-dev.toml, then:
+cargo run --locked -p viewer-app
+```
+
+`config/app.toml` chứa cấu hình nền và placeholder env tùy chọn; `app-prod.toml`
+vẫn là overlay production hiện có. File thật có secret không commit; deploy
+có thể mount thư mục config/profile như trước. Giữ nguyên snapshot baseline Java.
+
+```toml
+[database]
+url = "postgresql://127.0.0.1:5432/viewer_rust"
+username = "postgres"
+password = "REPLACE_WITH_LOCAL_DB_PASSWORD"
+max_connections = 10
+timeout_seconds = 5
+
+[auth]
+client_security_disabled = false
+admin_username = "sysadmin"
+admin_password = "REPLACE_WITH_LOCAL_ADMIN_PASSWORD"
+
+[session]
+default_expire_minutes = 60
+path_prefix = "/viewer?session="
+
+[jni]
+enabled = false
+```
+
+#### Schema và validation ứng dụng
+
+| Khóa | Contract |
+|---|---|
+| `database.url` | Bắt buộc: PostgreSQL URL có host/database, không nhúng credential; dùng hai trường riêng. |
+| `database.username`, `database.password` | Chuỗi bắt buộc có trong cấu hình hiệu lực, giữ nguyên giá trị; code dùng URL setters để encode ký tự đặc biệt. |
+| `database.max_connections` | Số nguyên dương, default 10; min pool giữ 1. |
+| `database.timeout_seconds` | Số nguyên dương, default 5; giữ phạm vi connect/acquire/readiness/migration hiện tại. |
+| `auth.client_security_disabled` | Boolean, default false; không đổi Basic/IP/admin/session/permission business rules. |
+| `auth.admin_username`, `auth.admin_password` | Chuỗi, giữ default `sysadmin` của implementation trước; cấu hình explicit trong file local/deploy. |
+| `session.default_expire_minutes` | i64, default 60; validate overflow timestamp, giữ normalize expireIn như Java. |
+| `session.path_prefix` | Chuỗi, default `/viewer?session=`; CONFIG PATH_PREFIX trong DB vẫn ưu tiên cùng cache/invalidation Step 5/8. |
+| `jni.enabled` | Boolean, default false; false không yêu cầu runtime/heap/timeout. |
+| `web`, `logger` | Schema/default và env/profile override của Summer hiện tại, không fork framework. |
+
+Các section ứng dụng từ chối unknown key/sai kiểu; lỗi binding/DB/JNI chỉ trả
+category an toàn, không in raw deserialize/driver error hay config Debug.
+Pool, migration, hashing, API/error business và session lifecycle không đổi.
+Cú pháp TOML, interpolation và thông báo lỗi của bộ nạp Summer giữ nguyên.
+
+Khi JNI bật, các khóa nằm trong cùng section `[jni]`:
+
+| Khóa | Quy tắc giữ từ Step 3 |
+|---|---|
+| `java_home`, `libjvm_path` | Ít nhất một, cả hai phải trỏ cùng Java 25; không dò JDK trên PATH. |
+| `facade_dir` | Distribution JAR/dependencies/manifest/checksum hợp lệ. |
+| `temp_dir`, `native_dir` | Thư mục đã tồn tại, path tương đối theo cwd. |
+| `xms_mb`, `xmx_mb`, `direct_mb` | Số nguyên dương khi bật; Xms ≤ Xmx; không chốt sizing production P1–P4. |
+| `timeout_ms`, `shutdown_ms` | Số nguyên dương khi bật; giữ lifecycle/fatal recovery. |
+| `check_jni` | Boolean tùy chọn; default debug=true, release=false; test đặt true. |
+
+Các khóa JNI có ví dụ comment trong file mẫu. Adapter nhận `JvmSettings` từ
+ứng dụng rồi validate thành `JvmConfig`, không phụ thuộc Summer hoặc đọc env
+để lấy runtime settings. Vẫn từ chối `JAVA_TOOL_OPTIONS`, `_JAVA_OPTIONS`,
+`JDK_JAVA_OPTIONS` không rỗng để ngăn option ngoài cấu hình. PATH/JAVA_HOME của
+OS/build tool không phải nguồn cấu hình nghiệp vụ hoặc cơ chế chọn JVM mới.
+
+#### Đối chiếu implementation cũ
+
+| Nguồn cũ | Khóa TOML |
+|---|---|
+| VIEWER_DATABASE_URL/USER/PASSWORD | database.url/username/password |
+| VIEWER_DATABASE_MAX_CONNECTIONS/TIMEOUT_SECONDS | database.max_connections/timeout_seconds |
+| VIEWER_CLIENT_SECURITY_DISABLED | auth.client_security_disabled |
+| VIEWER_ADMIN_USERNAME/PASSWORD | auth.admin_username/admin_password |
+| VIEWER_DEFAULT_EXPIRE_MINUTES/PATH_PREFIX | session.default_expire_minutes/path_prefix |
+| VIEWER_JNI_ENABLED | jni.enabled |
+| PACS_JAVA_HOME/LIBJVM_PATH | jni.java_home/libjvm_path |
+| PACS_FACADE_DIR | jni.facade_dir |
+| PACS_JVM_TEMP_DIR/NATIVE_DIR | jni.temp_dir/native_dir |
+| PACS_JVM_XMS_MB/XMX_MB/DIRECT_MB | jni.xms_mb/xmx_mb/direct_mb |
+| PACS_JVM_TIMEOUT_MS/SHUTDOWN_MS/CHECK_JNI | jni.timeout_ms/shutdown_ms/check_jni |
+
+Tên env cũ không còn được module ứng dụng đọc trực tiếp. Có thể dùng chúng
+trong placeholder TOML nếu cần tương thích vận hành. `VIEWER_CONFIG` không
+còn là đường chọn file riêng của ứng dụng; giữ đường nạp mặc định/profile
+của framework theo xác nhận người dùng. SUMMER_ENV và RUST_LOG giữ nguyên.
+
+#### Kiểm chứng refactor
+
+Test unit kiểm tra binding/default/type/unknown key/overflow và giữ nguyên
+credential. Integration PostgreSQL hồi quy migration/transaction/auth/config/
+create-session trên DB riêng. Smoke dùng thư mục tạm với `config/app.toml` và
+profile overlay, kiểm tra HTTP thật, interpolation, RUST_LOG override và việc
+module không đọc biến cũ ngoài TOML. Không sửa registry hoặc framework khi test.
+
+CI tạo `config/app-dev.toml` từ mẫu với credential fixture riêng. Python harness
+đọc local TOML literal để tạo fixture, không cung cấp settings qua env ứng dụng.
+`JNI_TEST_CONFIG` chỉ truyền đường dẫn file TOML cho libtest (không có CLI app);
+`JNI_TEST_CASE` điều khiển artifact gây lỗi. Cả hai chỉ phục vụ test, không có
+nhánh production đọc chúng để tạo session hoặc chọn runtime. Secret fixture
+không upload. Kết quả thực tế được ghi tại mục cập nhật bên dưới sau khi chạy.
+
+#### Kết quả kiểm chứng 2026-10-26
+
+Refactor đã triển khai trên Windows local; không thay version hoặc fork Summer.
+File mẫu mới: `config/app-dev.example.toml`. Không sửa snapshot Java. Thay đổi
+tài liệu Step 6 có từ trước không làm tăng tiến độ implementation của step.
+Người dùng đã xác nhận commit toàn bộ thay đổi và push ngày 2026-10-26.
+
+- `cargo fmt --all -- --check` và `cargo clippy --workspace --all-targets --locked -- -D warnings`: đạt.
+- `cargo test --workspace --locked`: 7 unit đạt; các test cần DB/JNI không được tính lượt skip là pass.
+- Lệnh PostgreSQL regression trong DEVELOPMENT_COMMANDS: 5 test đạt, 0 skip; hồi quy migration/readiness/transaction và Step 3a/4/5/8.
+- Debug/release workspace build và `python tools/smoke_app.py` (cả `--release`): đạt dev/prod, HTTP session/link/config, startup validation và shutdown. Test riêng xác nhận overlay/profile, interpolation và RUST_LOG override; biến cũ không được module đọc khi fixture TOML dùng literal.
+- `python tools/smoke_jni.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot' --app` và cùng lệnh thêm `--release`: đạt cả hai bản, gồm subprocess suite, PostgreSQL/JVM readiness, HTTP dev/prod, startup failure, fatal recovery và shutdown.
+- Kiểm tra cú pháp file mẫu/snippet TOML, Python harness, liên kết tài liệu và `git diff --check`: đạt. CI đã sửa để tạo profile TOML test; workflow Windows/Ubuntu chưa chạy trong lượt này.
+
+Evidence không commit: `target/config-toml-logs/` có `workspace-tests.log`,
+`postgres-regression.log`, `format.log`, `build-debug.log`, `build-release.log`,
+`smoke-debug.log`, `smoke-release.log`, `jni-debug.log`, `jni-release.log`.
+Các thông số JVM/DB tạm chỉ phục vụ test, không chốt sizing production.
+PostgreSQL tạm đã dừng/xóa; trạng thái cuối CLIENT/SESSION/CONFIG/mapping đều
+0 bản ghi, không còn kết nối app. Profile local chứa credential test đã xóa,
+chỉ giữ file mẫu. Evidence bổ sung: `final-database-state.log`, `postgres-stop.log`.
+
+Nguồn theo framework đã khóa:
+[Summer configuration](https://summer-rs.github.io/docs/getting-started/config/).
+Không thêm summer-sea-orm/plugin DB thứ hai để đổi nguồn cấu hình.
+
 ## 3. Các quyết định kiến trúc bắt buộc
 
 ### 3.1 Một JVM duy nhất trong mỗi Rust process
@@ -226,7 +388,7 @@ Khởi tạo JVM với cấu hình explicit:
 
 Trong development bật `-Xcheck:jni`. Production không bật nếu overhead không chấp nhận được, nhưng phải có một test profile luôn chạy với tùy chọn này.
 
-Không tự động sử dụng JDK bất kỳ trên host production. Runtime phải chỉ tới Java distribution đã kiểm thử qua cấu hình explicit, ví dụ `PACS_JAVA_HOME`/`PACS_LIBJVM_PATH`.
+Không tự động sử dụng JDK bất kỳ trên host production. Runtime phải chỉ tới Java distribution đã kiểm thử qua `jni.java_home`/`jni.libjvm_path` trong TOML đã chọn, theo contract cấu hình chung.
 
 ### 5.3 Thread attach/detach
 

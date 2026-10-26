@@ -103,10 +103,11 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires dedicated PostgreSQL and explicit JNI environment; run smoke_jni.py --app"]
     async fn postgres_and_jvm_readiness() {
-        let database = Persistence::connect_from_env()
+        let database = Persistence::connect(&crate::config::for_tests().database)
             .await
             .expect("PostgreSQL startup");
-        let config = crate::dicom::JvmConfig::from_env()
+        let config = crate::config::jni_for_tests()
+            .validate()
             .unwrap()
             .expect("JNI must be enabled");
         let jvm = Jvm::start(config).await.expect("JVM startup");
@@ -122,9 +123,9 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires dedicated PostgreSQL and VIEWER_DATABASE_URL"]
+    #[ignore = "requires dedicated PostgreSQL configured in TOML"]
     async fn postgres_migrations_transaction_readiness_and_close() {
-        let database = Persistence::connect_from_env()
+        let database = Persistence::connect(&crate::config::for_tests().database)
             .await
             .expect("PostgreSQL startup");
         Migrator::up(database.connection(), None)

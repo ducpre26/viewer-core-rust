@@ -3,4 +3,5 @@
 .env
 *.log
 __pycache__/
+/config/app-dev.toml
 

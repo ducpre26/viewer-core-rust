@@ -102,6 +102,12 @@ quy tắc ngôn ngữ; nó khác với số phiên bản compiler `1.99.0`.
   đọc `.env`; hiện ứng dụng đọc biến môi trường của tiến trình.
 - `.git/`: lịch sử commit và dữ liệu nội bộ Git; không chỉnh nội dung bằng tay.
 
+## Cấu hình TOML
+
+[Contract TOML](SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config):
+module nhận typed config từ registry Summer; giữ app.toml, overlay/profile,
+interpolation env và RUST_LOG override. Không fork framework hoặc thêm --config.
+
 ## 4. Đọc mã ứng dụng theo thứ tự nào?
 
 ### `src/main.rs`: ứng dụng bắt đầu từ đây
@@ -110,20 +116,21 @@ Luồng hiện tại:
 
 ```text
 Chạy viewer-app
-    → Đọc biến môi trường DB, tạo pool
+    → Summer nạp app.toml + profile, bind AppConfig và validate
+    → Tạo pool từ database config
     → Kiểm tra SELECT 1
     → Chạy các migration còn thiếu
     → Nếu JNI bật: kiểm tra runtime/artifact, tạo JVM và kiểm tra facade
-    → Nạp cấu hình ứng dụng, đăng ký WebPlugin và JobPlugin
+    → Đăng ký WebPlugin và JobPlugin bằng cùng cấu hình đã nạp
     → Đăng ký route HTTP, chạy server
     → Khi dừng: chờ server/scheduler, dừng JVM rồi đóng pool DB
 ```
 
-DB bắt buộc. Nếu cấu hình hoặc kết nối/migration lỗi, chương trình kết thúc với
-mã lỗi trước khi mở HTTP. `VIEWER_DATABASE_URL`, `VIEWER_DATABASE_USER` và
-`VIEWER_DATABASE_PASSWORD` được đọc từ môi trường; không ghi mật khẩu vào mã.
-Khi `VIEWER_JNI_ENABLED=true`, startup cũng yêu cầu runtime Java 25 và facade hợp lệ;
-xem [hướng dẫn adapter](../crates/dicom-jvm/README.md).
+DB bắt buộc; lỗi cấu hình/kết nối/migration phải kết thúc trước HTTP.
+URL/user/password nằm trong `[database]`, bật JNI bằng `jni.enabled`.
+`AppConfig::from_registry()` bind DatabaseConfig, AuthConfig, SessionConfig và
+JvmSettings. `Persistence::connect(&config.database)` và adapter nhận config
+đã bind, không đọc env trực tiếp. Xem [adapter](../crates/dicom-jvm/README.md).
 
 `#[tokio::main]` chuẩn bị runtime để hàm `async fn main()` hoạt động.
 `.await` chờ kết quả thao tác bất đồng bộ. `use ...` đưa tên kiểu/hàm vào phạm
@@ -140,7 +147,7 @@ Tên package là `viewer-app`, nhưng trong mã Rust dùng tên `viewer_app`, v�
 
 | Thành phần | Mục đích |
 |---|---|
-| `router(database, jvm, auth)` | Tạo router, gắn pool DB/JVM và middleware auth/session dùng chung. |
+| `router(database, jvm, auth, session_config)` | Tạo router, gắn pool DB/JVM và middleware auth/session dùng chung. |
 | `health()` | Trả trạng thái tiến trình đang sống. Không truy vấn DB. |
 | `readiness(...)` | Kiểm tra DB và JVM khi bật; thành công trả 200, thất bại trả 503. |
 | `Health`, `Readiness` | Kiểu dữ liệu JSON trả ra; derive hỗ trợ JSON và schema. |
@@ -159,12 +166,12 @@ trong [tài liệu phát triển](DEVELOPMENT_COMMANDS.md) để cấp đúng ru
 | Thành phần | Mục đích |
 |---|---|
 | `Persistence` | Giữ connection pool và timeout kiểm tra DB. |
-| `connect_from_env()` | Đọc cấu hình, kết nối, SELECT 1 và chạy migration. |
+| `connect(&DatabaseConfig)` | Nhận typed config đã bind từ TOML, kết nối/SELECT 1/migration. |
 | `connection()` | Cho lớp sử dụng mượn kết nối để truy vấn hoặc bắt đầu transaction. |
 | `check()` | Kiểm tra DB bằng SELECT 1 với thời gian chờ giới hạn. |
 | `close()` | Đóng pool khi ứng dụng dừng. |
 | `Migrator::migrations()` | Migration tạo client/session và permission/client_permission; startup dùng advisory lock trong transaction để tránh DDL đồng thời. |
-| `number(...)` | Đọc cấu hình số dương cho pool và timeout. |
+| `DatabaseConfig::connection_url()` | Validate URL/pool/timeout và encode credential riêng; không log secret. |
 | `connection_error(...)` | Trả thông báo lỗi đã lược bỏ thông tin nhạy cảm. |
 
 Đã có entity/repository SeaORM `client`, `session`, `permission`, `client_permission` và migration tương ứng.
@@ -196,16 +203,17 @@ Các dòng `//!` đầu tệp là chú thích tài liệu cho module.
 
 | Tệp/folder | Vai trò | Khi nào cần đọc/sửa? |
 |---|---|---|
-| `config/app.toml` | Cấu hình nền: địa chỉ, cổng, prefix HTTP, OpenAPI, logging, graceful shutdown. | Khi thay cấu hình chạy ứng dụng. |
-| `config/app-prod.toml` | Ghi đè cho production: bind mặc định ra các interface và log JSON. | Khi thay cấu hình triển khai. |
+| `config/app.toml` | Cấu hình nền của Summer, gồm các section ứng dụng và interpolation env tùy chọn. | Khi thay cấu hình nền. |
+| `config/app-prod.toml` | Overlay production như framework hiện có; chọn bằng SUMMER_ENV. | Khi thay cấu hình triển khai. |
 | `.github/workflows/rust.yml` | CI Windows/Ubuntu: chuẩn bị PostgreSQL riêng, format, lint, test, release build và smoke. | Khi thay quy trình kiểm tra trên GitHub. |
 | `tools/smoke_app.py` | Chạy ứng dụng thật ở dev/prod, kiểm tra HTTP/OpenAPI/logging, shutdown và lỗi startup DB. | Khi thay hành vi hạ tầng cần kiểm chứng từ bên ngoài. |
 | `tools/baseline_inventory.py` | Đọc repo Java bên cạnh, thu danh sách endpoint và bằng chứng tham chiếu vào `docs/baseline/`. | Khi chủ động cập nhật baseline; chạy lại có thể ghi đè snapshot. |
 | `tools/__pycache__/` | Cache Python tự sinh. | Không cần chỉnh sửa hoặc commit. |
 
-`SUMMER_ENV=prod` chọn thêm cấu hình production. `VIEWER_CONFIG` chọn tệp cấu
-hình nền; `VIEWER_PORT` và `VIEWER_BIND` đổi cổng/địa chỉ. Các thiết lập DB hiện
-được đọc trực tiếp từ môi trường trong `persistence`, không nằm trong TOML.
+Summer nạp app.toml và overlay theo profile; giữ SUMMER_ENV/interpolation/RUST_LOG.
+AppConfig chỉ bind các section từ registry có sẵn, không thêm file selector.
+File local mẫu là `config/app-dev.example.toml`; sao chép thành app-dev.toml để
+điền credential thật, file local được gitignore.
 
 ## 6. Tài liệu trong `docs/`
 
@@ -242,7 +250,7 @@ Không sửa mã trong `target/`; sửa trong `crates/viewer-app/src/` rồi bui
 
 ## 8. Lộ trình đọc và thực hành
 
-1. Đọc `README.md`, chuẩn bị PostgreSQL và biến môi trường.
+1. Đọc README/contract TOML; chuẩn bị PostgreSQL và app-dev.toml từ file mẫu.
 2. Đọc `Cargo.toml` ở gốc, rồi `crates/viewer-app/Cargo.toml` để hiểu workspace/package.
 3. Đọc `main.rs` để nắm vòng đời ứng dụng.
 4. Đọc `lib.rs`, tiếp theo `api/mod.rs` để hiểu module và route.

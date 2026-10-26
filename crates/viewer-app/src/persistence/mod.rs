@@ -1,10 +1,11 @@
 //! PostgreSQL infrastructure. Business entities and migrations belong to later steps.
+use crate::config::DatabaseConfig;
 use sea_orm::{
     ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, Statement,
     TransactionTrait,
 };
 use sea_orm_migration::prelude::*;
-use std::{env, time::Duration};
+use std::time::Duration;
 
 pub mod client;
 pub mod client_permission;
@@ -36,23 +37,11 @@ pub struct Persistence {
 }
 
 impl Persistence {
-    /// Read credentials only from the environment. Never format connection errors/URLs.
-    pub async fn connect_from_env() -> Result<Self, &'static str> {
-        let raw = env::var("VIEWER_DATABASE_URL").map_err(|_| "VIEWER_DATABASE_URL is required")?;
-        let mut url = url::Url::parse(&raw).map_err(|_| "Invalid VIEWER_DATABASE_URL")?;
-        if !matches!(url.scheme(), "postgres" | "postgresql") || url.host_str().is_none() {
-            return Err("VIEWER_DATABASE_URL must be a PostgreSQL URL with a host");
-        }
-        if let Ok(user) = env::var("VIEWER_DATABASE_USER") {
-            url.set_username(&user)
-                .map_err(|_| "Invalid database user")?;
-        }
-        if let Ok(password) = env::var("VIEWER_DATABASE_PASSWORD") {
-            url.set_password(Some(&password))
-                .map_err(|_| "Invalid database password")?;
-        }
-        let max = number("VIEWER_DATABASE_MAX_CONNECTIONS", 10)?;
-        let timeout = number("VIEWER_DATABASE_TIMEOUT_SECONDS", 5)?;
+    /// Connect using settings already bound from the application's TOML registry.
+    pub async fn connect(config: &DatabaseConfig) -> Result<Self, &'static str> {
+        let url = config.connection_url()?;
+        let max = config.max_connections;
+        let timeout = config.timeout_seconds;
         let mut options = ConnectOptions::new(url.to_string());
         options
             .max_connections(max)
@@ -113,18 +102,6 @@ impl Persistence {
 
     pub async fn close(self) -> Result<(), DbErr> {
         self.connection.close().await
-    }
-}
-
-fn number(name: &str, default: u32) -> Result<u32, &'static str> {
-    match env::var(name) {
-        Ok(value) => value
-            .parse::<u32>()
-            .ok()
-            .filter(|n| *n > 0)
-            .ok_or("Database pool size and timeout must be positive integers"),
-        Err(env::VarError::NotPresent) => Ok(default),
-        Err(_) => Err("Invalid database pool configuration"),
     }
 }
 

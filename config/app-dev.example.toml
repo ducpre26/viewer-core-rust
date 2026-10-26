@@ -1,0 +1,53 @@
+# Copy to config/app-dev.toml for local use (gitignored), then edit passwords.
+# Summer loads this profile over config/app.toml by default (SUMMER_ENV=dev).
+# Use literal values here; no environment variables are required for local use.
+[web]
+binding = "127.0.0.1"
+port = 8889
+global_prefix = "/ws/rest"
+graceful = true
+connect_info = true
+
+[web.openapi]
+doc_prefix = "/docs"
+
+[web.openapi.info]
+title = "Viewer Core Infrastructure"
+version = "0.1.0"
+description = "Viewer Core Rust"
+
+[logger]
+level = "info"
+format = "compact"
+time_style = "utc"
+
+[database]
+url = "postgresql://127.0.0.1:5432/viewer_rust"
+username = "postgres"
+password = "REPLACE_WITH_LOCAL_DB_PASSWORD"
+max_connections = 10
+timeout_seconds = 5
+
+[auth]
+client_security_disabled = false
+admin_username = "sysadmin"
+admin_password = "REPLACE_WITH_LOCAL_ADMIN_PASSWORD"
+
+[session]
+default_expire_minutes = 60
+path_prefix = "/viewer?session="
+
+[jni]
+enabled = false
+# Optional JNI settings when enabled=true. Relative paths use process cwd.
+# java_home = 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot'
+# libjvm_path = 'C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot\bin\server\jvm.dll'
+# facade_dir = "java/dicom-facade/target/distribution"
+# temp_dir = "target/jni-temp"
+# native_dir = "target/jni-native"
+# xms_mb = 32
+# xmx_mb = 128
+# direct_mb = 32
+# timeout_ms = 5000
+# shutdown_ms = 1500
+# check_jni = true

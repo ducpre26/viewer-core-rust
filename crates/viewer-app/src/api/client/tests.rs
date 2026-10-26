@@ -121,7 +121,9 @@ fn expiry_normalization_and_db_study_conversion() {
 #[tokio::test]
 #[ignore = "requires dedicated PostgreSQL; included by documented PostgreSQL regression filter"]
 async fn postgres_migrations_transaction_readiness_and_close_create_session() {
-    let db = Persistence::connect_from_env().await.unwrap();
+    let db = Persistence::connect(&crate::config::for_tests().database)
+        .await
+        .unwrap();
     let conn = db.connection();
     conn.execute_unprepared(
         "DELETE FROM client WHERE id LIKE 'step8-%'; DELETE FROM config WHERE id='PATH_PREFIX';",

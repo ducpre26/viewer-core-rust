@@ -9,6 +9,7 @@ Mỗi tính năng đang có trong Java Spring BE sẽ có chức năng tương �
 - Rust chạy độc lập, dùng **PostgreSQL riêng**, không dùng chung database với Spring BE.
 - Triển khai và phát hành lần lượt các tính năng đã hoàn tất cùng dependency; không cần đợi chuyển hết hoặc dừng Spring BE.
 - Rust quản lý API, nghiệp vụ, auth/session, database, cache, scheduler, HTTP proxy và Python/Trame.
+- Cấu hình vận hành thống nhất bằng [TOML](SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config) theo quyết định 2026-10-26; không đọc env làm nguồn cấu hình từng module. Contract đã chốt, refactor code/harness/CI chưa triển khai.
 - **Giữ dcm4che trên JVM nhúng qua JNI** cho xử lý DICOM và in. JVM không chạy Spring hoặc mở HTTP server. Không dùng GraalVM Native Image.
 - Init Rust và kết nối DB trước; baseline/fixture Java được thu theo từng tính năng khi triển khai, pipeline Rust kiểm thử độc lập.
 

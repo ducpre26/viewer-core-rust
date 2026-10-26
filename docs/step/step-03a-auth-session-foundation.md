@@ -1,5 +1,10 @@
 # Step 3a - Auth/session foundation
 
+> Refactor TOML ngày 2026-10-26: module nhận typed config từ registry Summer;
+> giữ app.toml/profile/interpolation/RUST_LOG theo xác nhận người dùng.
+> Checklist/evidence bên dưới là lịch sử step; kết quả refactor mới nằm trong
+> [mục cấu hình](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config).
+
 ## Phạm vi
 
 Chuyển auth, session lookup và kiểm tra quyền sang middleware Rust. Không dùng JNI; chưa triển khai CRUD client/quyền hoặc API tạo, chia sẻ, cập nhật, xóa session.
@@ -39,7 +44,7 @@ Revision: `c983e4eac389fa6b31f970cfee8f9fce5e20af4c`.
 - [x] Kiểm tra CORS, lỗi, context giữa request; hồi quy health/readiness/OpenAPI và startup/shutdown; hồi quy JNI khi đổi phần tích hợp.
 - [x] Chạy format, clippy, test/build và smoke phù hợp theo [DEVELOPMENT_COMMANDS.md](../DEVELOPMENT_COMMANDS.md); ghi kết quả thực tế, không tính test bỏ qua là đạt.
 
-## Tiến độ
+## Tiến độ implementation trước quyết định TOML
 
 - Trạng thái: `done` — implementation và kiểm tra Windows local đạt; CI Windows/Ubuntu chưa chạy, nếu phát hiện lỗi sẽ sửa lại step.
 - Đã làm: Migration/entity client/session, middleware/guard, cache và test Rust; khóa transaction PostgreSQL tránh migration đồng thời. Giữ schema, snapshot, nguồn ID và các ngoại lệ Java. Rust gốc: `80b6edac5e4859702683e1436b946c70ada6c4bb`.

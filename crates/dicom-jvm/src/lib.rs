@@ -1,7 +1,7 @@
 //! One embedded JVM per process, owned by a dedicated native worker.
 //! No Java references or environments cross this crate's public boundary.
 mod config;
-pub use config::JvmConfig;
+pub use config::{JvmConfig, JvmSettings};
 
 use jni::{
     InitArgsBuilder, JNIEnv, JNIVersion, JavaVM,

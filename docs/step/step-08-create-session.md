@@ -1,5 +1,10 @@
 # Step 8 - UC-001 Khởi tạo phiên xem ảnh 2D
 
+> Refactor TOML ngày 2026-10-26: module nhận typed config từ registry Summer;
+> giữ app.toml/profile/interpolation/RUST_LOG theo xác nhận người dùng.
+> Checklist/evidence bên dưới là lịch sử step; kết quả refactor mới nằm trong
+> [mục cấu hình](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config).
+
 ## Tính năng
 
 Chuyển API tạo session 2D và URL Viewer sang Rust.
@@ -29,7 +34,7 @@ Chuyển API tạo session 2D và URL Viewer sang Rust.
 - [x] UC-001 main flow, A1, A2, BR-001..BR-003; credential/IP/expiry/permission snapshot; BR-001 theo validation Java đã được người dùng xác nhận.
 - [x] Đạt khi: session/link/permission/database-cache postcondition pass.
 
-## Tiến độ
+## Tiến độ implementation trước quyết định TOML
 
 - Trạng thái: `done` — implementation và kiểm tra Windows local đạt; CI Windows/Ubuntu chưa chạy.
 - Đã làm: Port POST `/client/link` và `/client/getlink`; dùng Basic/IP/cache/lookup/guard Step 3a, repository client-permission Step 4 và ConfigStore Step 5. Tạo UUID v4, cache-only session, snapshot quyền hiện tại, expiry phút/UTC milliseconds và URL với CONFIG override. CachedSession giữ nguyên study set (null/blank/comma/dedup), không thay schema. ConfigStore được chia sẻ giữa API config và tạo link để invalidation có hiệu lực ngay. Thêm cấu hình môi trường, tài liệu, contract test PostgreSQL và smoke HTTP thật.

@@ -182,7 +182,9 @@ fn snapshot(id: &str, expiry: DateTime<Utc>) -> session::Model {
 #[tokio::test]
 #[ignore = "requires dedicated PostgreSQL; included by the documented PostgreSQL test filter"]
 async fn postgres_migrations_transaction_readiness_and_close_auth() {
-    let db = Persistence::connect_from_env().await.unwrap();
+    let db = Persistence::connect(&crate::config::for_tests().database)
+        .await
+        .unwrap();
     let conn = db.connection();
     for sql in [
         "SELECT to_regclass('public.idx_session_expired_time') IS NOT NULL AS ok",

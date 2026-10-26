@@ -11,6 +11,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import config_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,16 +25,19 @@ def environment(java_home):
     native = ROOT / "target" / "jni-native"
     temp.mkdir(parents=True, exist_ok=True)
     native.mkdir(parents=True, exist_ok=True)
-    env.update(VIEWER_JNI_ENABLED="true", PACS_JAVA_HOME=str(java_home),
-               PACS_FACADE_DIR=str(ROOT / "java/dicom-facade/target/distribution"),
-               PACS_JVM_TEMP_DIR=str(temp), PACS_JVM_NATIVE_DIR=str(native),
-               PACS_JVM_XMS_MB="32", PACS_JVM_XMX_MB="128", PACS_JVM_DIRECT_MB="32",
-               PACS_JVM_TIMEOUT_MS="5000", PACS_JVM_SHUTDOWN_MS="1500", PACS_JVM_CHECK_JNI="true")
     env["PATH"] = str(java_home / "bin") + os.pathsep + env.get("PATH", "")
     return env
 
 
-def app_faults(binary, env, java_home):
+def jni_settings(java_home):
+    return {"enabled": True, "java_home": str(java_home.resolve()),
+            "facade_dir": str(ROOT / "java/dicom-facade/target/distribution"),
+            "temp_dir": str(ROOT / "target/jni-temp"), "native_dir": str(ROOT / "target/jni-native"),
+            "xms_mb": 32, "xmx_mb": 128, "direct_mb": 32,
+            "timeout_ms": 5000, "shutdown_ms": 1500, "check_jni": True}
+
+
+def app_faults(binary, env, java_home, settings):
     import smoke_app
     with tempfile.TemporaryDirectory(prefix="jni-app-fixtures-", dir=ROOT / "target") as temporary:
         distribution = Path(temporary).resolve()
@@ -49,7 +53,7 @@ def app_faults(binary, env, java_home):
             [java_home / "bin" / f"jar{suffix}", "--create", "--file", jar, "-C", classes, "."],
         ):
             subprocess.run([str(arg) for arg in command], env=env, check=True, timeout=60, capture_output=True)
-        manifest = json.loads((Path(env["PACS_FACADE_DIR"]) / "manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads((Path(settings["facade_dir"]) / "manifest.json").read_text(encoding="utf-8"))
         manifest["artifacts"] = {jar.name: hashlib.sha256(jar.read_bytes()).hexdigest()}
         (distribution / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
         for case in ("hang-startup", "throw-probe", "hang-probe", "java-thread"):
@@ -57,9 +61,13 @@ def app_faults(binary, env, java_home):
                 sock.bind(("127.0.0.1", 0))
                 port = sock.getsockname()[1]
             child_env = env.copy()
-            child_env.update(PACS_FACADE_DIR=str(distribution), JNI_TEST_CASE=case,
-                             PACS_JVM_TIMEOUT_MS="1500", PACS_JVM_SHUTDOWN_MS="1500",
-                             SUMMER_ENV="dev", VIEWER_BIND="127.0.0.1", VIEWER_PORT=str(port))
+            child_env.update(JNI_TEST_CASE=case, SUMMER_ENV="dev")
+            working = distribution / case
+            configured = config_fixture.merge(config_fixture.settings(), {
+                "web": {"binding": "127.0.0.1", "port": port},
+                "jni": config_fixture.merge(settings, {"facade_dir": str(distribution),
+                    "timeout_ms": 1500, "shutdown_ms": 1500})})
+            config_fixture.write(working / "config/app.toml", configured)
             options = {}
             if os.name == "nt":
                 import ctypes
@@ -70,7 +78,7 @@ def app_faults(binary, env, java_home):
                 options.update(creationflags=subprocess.CREATE_NEW_CONSOLE, startupinfo=startup)
             log = ROOT / "target/step-03-logs" / f"app-fault-{case}.log"
             with log.open("w") as output:
-                process = subprocess.Popen([str(binary)], cwd=ROOT, env=child_env,
+                process = subprocess.Popen([str(binary)], cwd=working, env=child_env,
                                            stdout=output, stderr=subprocess.STDOUT, **options)
                 try:
                     base = f"http://127.0.0.1:{port}/ws/rest"
@@ -105,7 +113,7 @@ def app_faults(binary, env, java_home):
             text = log.read_text(encoding="utf-8", errors="replace")
             expected = "JVM startup error" if case == "hang-startup" else "JVM shutdown error" if case == "java-thread" else "JVM fatal error"
             assert expected in text, f"Missing fatal exit evidence: {case}"
-            for secret in ("PRIVATE_PATIENT_TOKEN", "password=secret", env.get("VIEWER_DATABASE_PASSWORD")):
+            for secret in ("PRIVATE_PATIENT_TOKEN", "password=secret", configured["database"]["password"]):
                 if secret:
                     assert secret not in text, "Sensitive diagnostic leaked"
             assert "WARNING in native method" not in text
@@ -116,7 +124,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--java-home", type=Path, required=True)
     parser.add_argument("--release", action="store_true")
-    parser.add_argument("--app", action="store_true", help="Also test HTTP/readiness/shutdown; requires PostgreSQL environment and built viewer-app")
+    parser.add_argument("--app", action="store_true", help="Also test HTTP/readiness/shutdown; requires PostgreSQL in config/app-dev.toml and built viewer-app")
     args = parser.parse_args()
     log = ROOT / "target/step-03-logs/jni-suite.log"
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -125,15 +133,19 @@ if __name__ == "__main__":
         command.append("--release")
     command += ["jvm_subprocess_suite", "--", "--ignored", "--nocapture"]
     print(f"JNI subprocess suite; log: {log}", flush=True)
+    env = environment(args.java_home)
+    settings = jni_settings(args.java_home)
+    fixture_file = ROOT / "target/jni-temp/test-settings.toml"
+    config_fixture.write(fixture_file, settings)
+    env["JNI_TEST_CONFIG"] = str(fixture_file)
     with log.open("w", encoding="utf-8") as output:
-        result = subprocess.run(command, cwd=ROOT, env=environment(args.java_home),
+        result = subprocess.run(command, cwd=ROOT, env=env,
                                 stdout=output, stderr=subprocess.STDOUT, timeout=600)
     print(log.read_text(encoding="utf-8", errors="replace"))
     if result.returncode:
         sys.exit(result.returncode)
     if args.app:
         import smoke_app
-        env = environment(args.java_home)
         command = ["cargo", "test", "-p", "viewer-app", "--locked"]
         if args.release:
             command.append("--release")
@@ -148,14 +160,16 @@ if __name__ == "__main__":
         binary = ROOT / "target" / ("release" if args.release else "debug") / (
             "viewer-app.exe" if os.name == "nt" else "viewer-app")
         for profile in ("dev", "prod"):
-            smoke_app.check(profile, binary, env)
+            smoke_app.check(profile, binary, settings, env)
         # Startup fails before opening HTTP if the configured JVM cannot be loaded.
-        bad = env.copy()
-        bad["PACS_LIBJVM_PATH"] = str(ROOT / "target/absent-libjvm")
-        result = subprocess.run([str(binary)], cwd=ROOT, env=bad,
-                                capture_output=True, text=True, timeout=30)
+        with tempfile.TemporaryDirectory(prefix="jni-bad-config-", dir=ROOT / "target") as temporary:
+            bad = config_fixture.merge(config_fixture.settings(), {"jni": config_fixture.merge(settings,
+                {"libjvm_path": str(ROOT / "target/absent-libjvm")})})
+            config_fixture.write(Path(temporary) / "config/app.toml", bad)
+            result = subprocess.run([str(binary)], cwd=temporary, env=env,
+                                    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
         assert result.returncode != 0
         assert "JVM_CONFIG" in result.stderr
         assert "absent-libjvm" not in result.stderr, "Runtime path leaked"
         print("PASS app JNI startup failure: sanitized error, nonzero exit")
-        app_faults(binary, env, args.java_home.resolve())
+        app_faults(binary, env, args.java_home.resolve(), settings)

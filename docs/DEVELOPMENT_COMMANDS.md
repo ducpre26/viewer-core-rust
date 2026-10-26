@@ -3,6 +3,13 @@
 Chạy các lệnh dưới đây từ thư mục gốc repo `1pacs-viewer-core-rust`. Toolchain Rust
 được ghim trong `rust-toolchain.toml`; dependency được khóa trong `Cargo.lock`.
 
+## Cấu hình ứng dụng
+
+Theo [contract TOML](SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config),
+DB/auth/session/JNI dùng chung registry của Summer với HTTP/logger. Giữ nguyên
+`config/app.toml`, overlay theo profile, interpolation env và RUST_LOG override.
+Không thêm `--config`; module không tự đọc env cho settings ứng dụng.
+
 ## 1. Chuẩn bị môi trường
 
 | Lệnh | Mục đích |
@@ -13,32 +20,23 @@ Chạy các lệnh dưới đây từ thư mục gốc repo `1pacs-viewer-core-r
 Cần có Python 3 để chạy smoke test. Trên Windows cần MSVC C++ Build Tools; trên
 Linux x86_64 cần trình biên dịch C/C++ và linker.
 
-Từ Step 02, PostgreSQL bắt buộc. Trước khi chạy app hoặc kiểm thử tích hợp,
-đặt `VIEWER_DATABASE_URL=postgresql://127.0.0.1:5432/viewer_rust`,
-`VIEWER_DATABASE_USER=postgres` và `VIEWER_DATABASE_PASSWORD` trong môi trường.
-Không lưu mật khẩu vào repo. Migration tự chạy trước khi mở HTTP;
-kết nối DB thất bại thì ứng dụng dừng với mã lỗi.
+PostgreSQL bắt buộc. Sao chép `config/app-dev.example.toml` thành
+`config/app-dev.toml`, sửa `[database]` và Basic admin, rồi chạy từ root repo.
+Không cần khai báo từng `$env:VIEWER_*`; vẫn có thể dùng env trong placeholder
+TOML theo Summer. File local có mật khẩu được gitignore. Migration tự chạy
+trước HTTP; lỗi cấu hình/kết nối làm startup thất bại.
 
 ## 2. Chạy khi phát triển
 
 | Lệnh | Mục đích |
 |---|---|
-| `cargo run --locked -p viewer-app` | Build debug rồi chạy ứng dụng; dừng bằng `Ctrl+C`. |
+| `cargo run --locked -p viewer-app` | Summer đọc app.toml + overlay theo profile; chạy debug và dừng bằng Ctrl+C. |
 | `cargo check --workspace --locked` | Kiểm tra biên dịch nhanh sau khi sửa code, không tạo bản chạy hoàn chỉnh. |
 | `cargo fmt --all` | Tự định dạng mã Rust. |
 
-Ứng dụng mặc định nghe ở `127.0.0.1:8888`. Nếu cổng 8888 đã được Java backend sử dụng:
-
-```powershell
-# Windows PowerShell: chọn cổng khác cho phiên shell hiện tại.
-$env:VIEWER_PORT = '8889'
-cargo run --locked -p viewer-app
-```
-
-```bash
-# Linux: chọn cổng khác cho một lần chạy.
-VIEWER_PORT=8889 cargo run --locked -p viewer-app
-```
+Chọn cổng bằng `web.port` trong file TOML, ví dụ `8889` nếu Java đang dùng
+8888. Profile mặc định dev; SUMMER_ENV và các placeholder env trong TOML vẫn
+được Summer xử lý như trước.
 
 Kiểm tra thủ công khi ứng dụng đang chạy (thay `8888` bằng cổng đã chọn):
 
@@ -59,7 +57,9 @@ Kiểm tra thủ công khi ứng dụng đang chạy (thay `8888` bằng cổng 
 | `cargo build --workspace --locked` | Build debug cho toàn workspace. |
 | `python tools/smoke_app.py` | Chạy ứng dụng debug thật để kiểm tra HTTP, cấu hình, logging và dừng sạch; Step 8 thêm tạo link/session qua TCP cho cả hai API và dùng session vừa tạo để truy cập config. |
 
-Smoke test tự dùng cổng localhost trống và chạy cả cấu hình dev/prod. Không cần
+Smoke test dùng cổng localhost trống và thư mục config TOML tạm cho từng
+subprocess; chạy dev/prod qua profile loader thật. Thêm kiểm tra interpolation,
+RUST_LOG override và việc module không đọc env ngoài TOML. Không cần
 khởi động ứng dụng bằng tay trước khi chạy test này.
 
 ## 4. Kiểm tra bản phát hành
@@ -112,7 +112,8 @@ python tools/smoke_jni.py --java-home 'C:\Program Files\Eclipse Adoptium\jdk-25.
 ```
 
 Lệnh đầu kiểm tra adapter bằng JVM thật trong subprocess riêng, không cần DB.
-`--app` cần biến môi trường PostgreSQL và binary debug đã build; thêm `--release`
+`--app` cần DB test riêng trong `config/app-dev.toml` và binary debug đã build;
+runner dùng TOML fixture cho JNI/subprocess; thêm `--release`
 để kiểm tra binary release. Script chọn giới hạn memory/timeout thử nghiệm rõ ràng,
 luôn bật `-Xcheck:jni`, kiểm tra readiness 200/503, HTTP dev/prod, shutdown và lỗi
 JVM fatal. Cấu hình chạy app thủ công nằm trong [README adapter](../crates/dicom-jvm/README.md).

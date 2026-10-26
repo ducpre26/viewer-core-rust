@@ -8,10 +8,6 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    env:
-      VIEWER_DATABASE_URL: postgresql://127.0.0.1:5432/viewer_rust
-      VIEWER_DATABASE_USER: postgres
-      VIEWER_DATABASE_PASSWORD: ci-only-password
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,6 +24,8 @@ jobs:
           password: ci-only-password
           postgres-version: '18'
       - run: rustup show
+      - name: Prepare ignored TOML test profile
+        run: python -c "from pathlib import Path; p=Path('config/app-dev.example.toml'); Path('config/app-dev.toml').write_text(p.read_text(encoding='utf-8').replace('REPLACE_WITH_LOCAL_DB_PASSWORD', 'ci-only-password').replace('REPLACE_WITH_LOCAL_ADMIN_PASSWORD', 'fixture-admin-password'), encoding='utf-8')"
       - name: Build and verify packaged Java facade
         shell: bash
         run: python tools/facade.py build --java-home "$JAVA_HOME"

@@ -1,5 +1,11 @@
 # Java baseline — collected reference
 
+Rust deployment configuration is governed by the
+[TOML contract](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config) agreed on 2026-10-26.
+Java configuration names and `inputs/` below are historical evidence, not a
+requirement to keep environment-variable configuration in Rust. Do not rewrite
+the captured inputs or their hashes to implement this deployment decision.
+
 This evidence is retained for reuse. It is not an entry gate for Rust initialization. Capture runtime fixtures and schema details only for the feature being implemented; perform whole-system reconciliation at Step 18. The remaining items below are not prerequisites for Step 1.
 
 Source branch: `codex/java-baseline-step-00`, created from `refactor` at

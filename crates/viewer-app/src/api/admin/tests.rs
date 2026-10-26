@@ -107,7 +107,9 @@ fn java_clean_text_and_page_boundaries() {
 #[tokio::test]
 #[ignore = "requires dedicated PostgreSQL; included by documented PostgreSQL regression filter"]
 async fn postgres_migrations_transaction_readiness_and_close_admin() {
-    let db = Persistence::connect_from_env().await.unwrap();
+    let db = Persistence::connect(&crate::config::for_tests().database)
+        .await
+        .unwrap();
     let conn = db.connection();
     // Fixture IDs are isolated from the parallel auth tests and existing data.
     conn.execute_unprepared("DELETE FROM client WHERE id LIKE 'step4-%'; DELETE FROM permission WHERE id LIKE 'step4-%';").await.unwrap();

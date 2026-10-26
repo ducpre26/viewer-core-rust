@@ -32,6 +32,15 @@
 | 17 | [UC-013 In ảnh qua máy in DICOM](step-17-dicom-print.md) |
 | 18 | [Hardening, full regression và hoàn tất phạm vi migration](step-18-hardening.md) |
 
+## Contract cấu hình chung
+
+Theo [contract TOML](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config)
+được người dùng xác nhận: giữ nguyên Summer nạp app.toml, overlay theo profile,
+interpolation env và RUST_LOG override. Module nhận typed config từ registry;
+không tự đọc env cho DB/auth/session/JNI. Không vá framework hoặc thêm --config.
+Các bằng chứng cũ được giữ; kết quả refactor mới ghi tại mục 2.4 tham chiếu kỹ thuật.
+Không đổi nghiệp vụ/schema hoặc snapshot Java vì thay nguồn cấu hình.
+
 ## Quy tắc chung
 
 - Không dùng skill `ai-first-sdlc` để tạo, sửa, review hay điều phối tài liệu; không áp dụng agent hoặc gate của skill.
