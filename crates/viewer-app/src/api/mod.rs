@@ -1,5 +1,7 @@
 //! HTTP infrastructure; business routes belong to their migration steps.
 mod admin;
+mod config;
+mod response;
 use crate::dicom::Jvm;
 use crate::persistence::Persistence;
 use schemars::JsonSchema;
@@ -61,6 +63,7 @@ pub fn router(database: Persistence, jvm: Option<Jvm>, auth: crate::auth::Auth) 
     crate::auth::secure(
         Router::new()
             .merge(admin::router(auth.clone()))
+            .merge(config::router(database.clone(), auth.clone()))
             .api_route("/health", get(health))
             .api_route(
                 "/ready",

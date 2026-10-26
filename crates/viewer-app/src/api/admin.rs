@@ -1,4 +1,5 @@
 //! UC-009 contract from AdminAPI; database constraints arbitrate concurrent writes.
+use super::response::*;
 use crate::{
     auth::Auth,
     persistence::{Persistence, client, client_permission as mapping, permission},
@@ -22,51 +23,6 @@ use summer_web::{
     },
 };
 
-type Result = std::result::Result<Response, Error>;
-#[derive(Debug)]
-pub struct Error(StatusCode, String, &'static str);
-impl summer_web::aide::OperationOutput for Error {
-    type Inner = Self;
-}
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        if self.2 == "MAPPING_ERROR" {
-            return mapping_error(&self.1);
-        }
-        (self.0, Json(json!({"status":self.0.as_u16(),"errorCode":self.2,"message":self.1,"timestamp":chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis,true)}))).into_response()
-    }
-}
-impl From<sea_orm::DbErr> for Error {
-    fn from(_: sea_orm::DbErr) -> Self {
-        Self(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Database operation failed".into(),
-            "INTERNAL_ERROR",
-        )
-    }
-}
-fn invalid() -> Error {
-    Error(
-        StatusCode::BAD_REQUEST,
-        "must not be null".into(),
-        "VALIDATION_ERROR",
-    )
-}
-fn envelope(code: u16, message: &str, body: Value) -> Value {
-    json!({"header":{"code":code,"message":message,"datetime":chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis,true)},"body":body})
-}
-fn reply(http: u16, code: u16, message: &str, body: Value) -> Response {
-    (
-        StatusCode::from_u16(http).unwrap(),
-        Json(envelope(code, message, body)),
-    )
-        .into_response()
-}
-fn clean(value: Option<String>) -> Option<String> {
-    value
-        .map(|s| s.trim_matches(|c: char| c <= '\u{20}').to_owned())
-        .filter(|s| !s.is_empty())
-}
 async fn password(raw: String) -> std::result::Result<String, Error> {
     // Spring BCryptPasswordEncoder(8) defaults to version 2a.
     tokio::task::spawn_blocking(move || bcrypt::hash(raw, 8).map(|s| s.replacen("$2b$", "$2a$", 1)))
@@ -103,35 +59,6 @@ struct PermissionInput {
 #[serde(rename_all = "camelCase")]
 struct MappingInput {
     permission_id: Option<String>,
-}
-#[derive(Deserialize, JsonSchema)]
-struct Paging {
-    #[serde(default)]
-    offset: i32,
-    #[serde(default = "default_limit")]
-    limit: i32,
-}
-fn default_limit() -> i32 {
-    100
-}
-impl Paging {
-    fn start(&self) -> std::result::Result<u64, Error> {
-        if self.limit <= 0 {
-            return Err(Error(
-                StatusCode::BAD_REQUEST,
-                "Page size must not be less than one".into(),
-                "BAD_REQUEST",
-            ));
-        }
-        Ok((self.offset / self.limit).max(0) as u64 * self.limit as u64)
-    }
-    fn response(&self, kind: &str, total: u64, body: Vec<Value>) -> Response {
-        let mut value = envelope(302, &format!("Found {} {kind}", body.len()), json!(body));
-        value["header"]["offset"] = json!(self.offset);
-        value["header"]["limit"] = json!(self.limit);
-        value["header"]["totalRecords"] = json!(total);
-        Json(value).into_response()
-    }
 }
 fn client_dto(c: client::Model, ids: Option<Vec<String>>) -> Value {
     json!({"id":c.id,"ipAllowed":c.ip_allowed,"permissionIds":ids})
@@ -225,13 +152,7 @@ async fn client_delete(
     auth.invalidate_client(&id).await;
     Ok(reply(200, 200, "Deleted", json!(id)))
 }
-fn missing(id: &str) -> Error {
-    Error(
-        StatusCode::NOT_FOUND,
-        format!("Entity not found with id: {id}"),
-        "NOT_FOUND",
-    )
-}
+
 async fn permissions(Extension(db): Extension<Persistence>, Query(page): Query<Paging>) -> Result {
     let start = page.start()?;
     let total = permission::Entity::find().count(db.connection()).await?;

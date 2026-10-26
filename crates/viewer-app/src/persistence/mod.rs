@@ -8,7 +8,9 @@ use std::{env, time::Duration};
 
 pub mod client;
 pub mod client_permission;
+pub mod config;
 mod m20261026_auth;
+mod m20261026_config;
 mod m20261026_permissions;
 pub mod permission;
 pub mod session;
@@ -21,6 +23,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20261026_auth::Migration),
             Box::new(m20261026_permissions::Migration),
+            Box::new(m20261026_config::Migration),
         ]
     }
 }
