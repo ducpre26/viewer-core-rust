@@ -1,8 +1,8 @@
 # Hướng dẫn cấu trúc repo Rust cho người mới
 
-Tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 3 (2026-10-26).
-Ứng dụng đã có HTTP, PostgreSQL và nền tảng JVM/JNI. `auth` và `domain`
-vẫn là khung; chưa triển khai thao tác DICOM nghiệp vụ.
+Tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 3a (2026-10-26).
+Ứng dụng có HTTP, PostgreSQL, nền tảng JVM/JNI và middleware auth/session.
+Chưa triển khai CRUD hoặc thao tác DICOM nghiệp vụ.
 
 ## 1. Một số khái niệm trước khi đọc
 
@@ -40,8 +40,8 @@ vẫn là khung; chưa triển khai thao tác DICOM nghiệp vụ.
 │       ├── lib.rs             Khai báo các module dùng chung
 │       ├── api/mod.rs         Route HTTP, health/readiness, kiểm thử tích hợp
 │       ├── persistence/mod.rs Pool PostgreSQL và migration runner
-│       ├── auth/mod.rs        Khung xác thực và phân quyền
-│       ├── domain/mod.rs      Khung quy tắc và kiểu dữ liệu nghiệp vụ
+│       ├── auth/mod.rs        Middleware, session cache và guard; config/test ở cùng thư mục
+│       ├── domain/mod.rs      Principal, role và quy tắc permission
 │       └── dicom/mod.rs       Ranh giới gọi adapter JVM từ ứng dụng
 ├── crates/dicom-jvm/          Adapter JVM/JNI và kiểm thử subprocess
 ├── java/dicom-facade/         Maven module facade Java 25
@@ -137,7 +137,7 @@ Tên package là `viewer-app`, nhưng trong mã Rust dùng tên `viewer_app`, v�
 
 | Thành phần | Mục đích |
 |---|---|
-| `router(database, jvm)` | Tạo router và gắn pool DB cùng handle JVM (nếu bật) cho handler. |
+| `router(database, jvm, auth)` | Tạo router, gắn pool DB/JVM và middleware auth/session dùng chung. |
 | `health()` | Trả trạng thái tiến trình đang sống. Không truy vấn DB. |
 | `readiness(...)` | Kiểm tra DB và JVM khi bật; thành công trả 200, thất bại trả 503. |
 | `Health`, `Readiness` | Kiểu dữ liệu JSON trả ra; derive hỗ trợ JSON và schema. |
@@ -160,13 +160,13 @@ trong [tài liệu phát triển](DEVELOPMENT_COMMANDS.md) để cấp đúng ru
 | `connection()` | Cho lớp sử dụng mượn kết nối để truy vấn hoặc bắt đầu transaction. |
 | `check()` | Kiểm tra DB bằng SELECT 1 với thời gian chờ giới hạn. |
 | `close()` | Đóng pool khi ứng dụng dừng. |
-| `Migrator::migrations()` | Danh sách migration; hiện là danh sách rỗng. |
+| `Migrator::migrations()` | Migration tạo client/session; startup dùng advisory lock trong transaction để tránh DDL đồng thời. |
 | `number(...)` | Đọc cấu hình số dương cho pool và timeout. |
 | `connection_error(...)` | Trả thông báo lỗi đã lược bỏ thông tin nhạy cảm. |
 
-Chưa có entity, repository nghiệp vụ hoặc migration tạo bảng nghiệp vụ.
-Bảng `seaql_migrations` chỉ theo dõi migration. Khi thêm tính năng mới, bước
-tương ứng sẽ thêm schema và repository cần thiết.
+Đã có entity/repository SeaORM `client`, `session` và migration tương ứng.
+Bảng `seaql_migrations` theo dõi migration. Các bảng nghiệp vụ khác được thêm
+khi step tương ứng cần dùng.
 
 `database.clone()` chia sẻ pool hiện có, không tạo một pool độc lập cho mỗi lần
 clone. `&DatabaseConnection` là tham chiếu mượn kết nối. `Result<T, E>` biểu diễn
@@ -177,8 +177,8 @@ tác thất bại. `impl Persistence` nhóm các hàm gắn với kiểu `Persis
 
 | Module | Trách nhiệm dự kiến | Hiện trạng |
 |---|---|---|
-| `auth` | Xác thực session, middleware, kiểm tra quyền. | Chỉ có chú thích; bắt đầu ở Step 3a. |
-| `domain` | Kiểu dữ liệu và quy tắc nghiệp vụ, tránh phụ thuộc framework/I/O. | Chỉ có chú thích. |
+| `auth` | Xác thực session, middleware, kiểm tra quyền. | Basic/IP, cache lookup/expiry/share-key, admin/permission guard, CORS và request context. |
+| `domain` | Kiểu dữ liệu và quy tắc nghiệp vụ, tránh phụ thuộc framework/I/O. | Principal, role và quy tắc permission snapshot/ADMIN. |
 | `dicom` | Ranh giới từ ứng dụng tới crate `dicom-jvm`. | Xuất handle/config an toàn; chưa có thao tác DICOM nghiệp vụ. |
 
 Crate `dicom-jvm` giữ toàn bộ `JNIEnv`/Java reference và worker riêng. Maven module

@@ -1,16 +1,21 @@
 //! PostgreSQL infrastructure. Business entities and migrations belong to later steps.
 use sea_orm::{
     ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, Statement,
+    TransactionTrait,
 };
 use sea_orm_migration::prelude::*;
 use std::{env, time::Duration};
+
+pub mod client;
+mod m20261026_auth;
+pub mod session;
 
 pub struct Migrator;
 
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![]
+        vec![Box::new(m20261026_auth::Migration)]
     }
 }
 
@@ -55,7 +60,7 @@ impl Persistence {
             let _ = persistence.close().await;
             return Err("PostgreSQL startup SELECT 1 failed");
         }
-        if Migrator::up(persistence.connection(), None).await.is_err() {
+        if persistence.migrate().await.is_err() {
             let _ = persistence.close().await;
             return Err(
                 "PostgreSQL migration failed; check database DDL permissions and migration state",
@@ -66,6 +71,24 @@ impl Persistence {
 
     pub fn connection(&self) -> &DatabaseConnection {
         &self.connection
+    }
+
+    async fn migrate(&self) -> Result<(), DbErr> {
+        // Serialize startup DDL, including creation of SeaORM's own tracking table.
+        let migration = async {
+            let transaction = self.connection.begin().await?;
+            transaction
+                .execute(Statement::from_string(
+                    DbBackend::Postgres,
+                    "SELECT pg_advisory_xact_lock(1635018794)".to_owned(),
+                ))
+                .await?;
+            Migrator::up(&transaction, None).await?;
+            transaction.commit().await
+        };
+        tokio::time::timeout(self.query_timeout, migration)
+            .await
+            .map_err(|_| DbErr::Custom("PostgreSQL migration timed out".into()))?
     }
 
     pub async fn check(&self) -> Result<(), DbErr> {

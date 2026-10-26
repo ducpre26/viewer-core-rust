@@ -3,6 +3,7 @@ binding = "${VIEWER_BIND:127.0.0.1}"
 port = ${VIEWER_PORT:8888}
 global_prefix = "/ws/rest"
 graceful = true
+connect_info = true
 
 [web.openapi]
 doc_prefix = "/docs"

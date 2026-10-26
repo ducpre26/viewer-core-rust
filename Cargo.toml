@@ -17,9 +17,17 @@ serde = { version = "1", features = ["derive"] }
 schemars = "1.1"
 
 
-sea-orm = { version = "1.1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls"] }
+sea-orm = { version = "1.1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "postgres-array"] }
 sea-orm-migration = { version = "1.1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls"] }
 url = "2"
 jni = { version = "=0.21.1", features = ["invocation"] }
 serde_json = "1"
 sha2 = "0.10"
+chrono = "0.4"
+base64 = "0.22"
+bcrypt = "0.19"
+moka = { version = "0.12", features = ["future"] }
+tracing = "0.1"
+tower-http = { version = "0.6", features = ["cors"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

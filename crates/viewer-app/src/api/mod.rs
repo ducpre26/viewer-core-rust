@@ -56,19 +56,22 @@ async fn readiness(
     )
 }
 
-pub fn router(database: Persistence, jvm: Option<Jvm>) -> Router {
-    Router::new()
-        .api_route("/health", get(health))
-        .api_route(
-            "/ready",
-            get_with(readiness, |operation| {
-                operation
-                    .response::<200, Json<Readiness>>()
-                    .response::<503, Json<Readiness>>()
-            }),
-        )
-        .layer(Extension(database))
-        .layer(Extension(jvm))
+pub fn router(database: Persistence, jvm: Option<Jvm>, auth: crate::auth::Auth) -> Router {
+    crate::auth::secure(
+        Router::new()
+            .api_route("/health", get(health))
+            .api_route(
+                "/ready",
+                get_with(readiness, |operation| {
+                    operation
+                        .response::<200, Json<Readiness>>()
+                        .response::<503, Json<Readiness>>()
+                }),
+            )
+            .layer(Extension(database))
+            .layer(Extension(jvm)),
+        auth,
+    )
 }
 
 #[cfg(test)]

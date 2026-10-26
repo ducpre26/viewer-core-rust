@@ -137,6 +137,7 @@ def check_startup_failures(binary):
         sock.bind(("127.0.0.1", 0))
         unavailable_port = sock.getsockname()[1]
     cases = [
+        ({"VIEWER_CLIENT_SECURITY_DISABLED": "invalid"}, "must be true or false"),
         ({"VIEWER_DATABASE_URL": None}, "VIEWER_DATABASE_URL is required"),
         ({"VIEWER_DATABASE_PASSWORD": "smoke-invalid-password-7f38"}, "authentication failed"),
         ({"VIEWER_DATABASE_URL": f"postgresql://127.0.0.1:{unavailable_port}/viewer_rust"},
@@ -152,12 +153,13 @@ def check_startup_failures(binary):
         result = subprocess.run([str(binary)], cwd=ROOT, env=env,
                                 capture_output=True, text=True, timeout=15)
         output = result.stdout + result.stderr
-        assert result.returncode != 0, "Invalid database configuration must fail startup"
-        assert expected in output, "Missing sanitized database error category"
-        for secret in (env.get("VIEWER_DATABASE_PASSWORD"), env.get("VIEWER_DATABASE_URL")):
+        assert result.returncode != 0, "Invalid configuration must fail startup"
+        assert expected in output, "Missing sanitized startup error category"
+        for secret in (env.get("VIEWER_DATABASE_PASSWORD"), env.get("VIEWER_DATABASE_URL"),
+                       env.get("VIEWER_ADMIN_PASSWORD")):
             if secret:
                 assert secret not in output, "Database secret leaked in startup logs"
-    print("PASS startup failures: missing URL, wrong password, unreachable DB; no secrets logged")
+    print("PASS startup failures: invalid auth flag, missing URL, wrong password, unreachable DB; no secrets logged")
 
 
 if __name__ == "__main__":

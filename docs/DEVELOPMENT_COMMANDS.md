@@ -55,7 +55,7 @@ Kiểm tra thủ công khi ứng dụng đang chạy (thay `8888` bằng cổng 
 | `cargo fmt --all -- --check` | Báo lỗi nếu mã chưa đúng định dạng. |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | Kiểm tra lint và coi cảnh báo là lỗi. |
 | `cargo test --workspace --locked` | Chạy test không cần DB; test PostgreSQL bị bỏ qua có ghi rõ. |
-| `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored` | Chạy kiểm thử PostgreSQL thật: migration, transaction, readiness và đóng pool. |
+| `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored` | Chạy PostgreSQL thật: migration/transaction/readiness và bộ auth/session HTTP, cache, permission, schema, đóng pool (Step 3a). |
 | `cargo build --workspace --locked` | Build debug cho toàn workspace. |
 | `python tools/smoke_app.py` | Chạy ứng dụng debug thật để kiểm tra HTTP, cấu hình, logging và dừng sạch. |
 

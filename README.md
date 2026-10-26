@@ -63,6 +63,30 @@ business rules, `persistence` for repository adapters, `auth` for session and
 permission checks, and `dicom` for the DICOM/JNI boundary. Empty modules declare
 ownership only; they do not claim any migrated capability.
 
+## Authentication/session foundation (Step 3a)
+
+`auth::secure` wraps feature routes with the Java-compatible request filter,
+CORS and response headers. Features attach `require_admin` or
+`require_permission` as route layers. The request owns its `SecurityContext`;
+session access does not grant a Basic admin role. No business or fixture-seeding
+endpoint is added by this step.
+
+| Variable | Java-compatible default | Purpose |
+|---|---|---|
+| `VIEWER_CLIENT_SECURITY_DISABLED` | `false` | Bypass client Basic and permission checks; session validation and admin Basic remain active |
+| `VIEWER_ADMIN_USERNAME` | `sysadmin` | Configured Basic admin identity |
+| `VIEWER_ADMIN_PASSWORD` | `sysadmin` | Configured Basic admin credential; supply through the environment for deployment |
+
+Startup adds `client` and `session` via transactional migrations, serialized
+with a PostgreSQL advisory lock. Auth caches clients for 600 minutes (10 entries)
+and session snapshots for 120 minutes (1000 entries); business expiry is checked
+separately. `Auth::invalidate_client` and `invalidate_session` support later CRUD
+steps. Session permission snapshots are preserved until invalidation/expiry.
+
+Source comparison and test scope: [Step 3a](docs/step/step-03a-auth-session-foundation.md).
+The documented PostgreSQL test command includes the opt-in auth HTTP suite and
+real TCP peer checks. Java is read as source only; no Java baseline tests are run.
+
 ## Verify
 
 ```text
@@ -113,13 +137,13 @@ and `VIEWER_DATABASE_PASSWORD`. No credential is saved in the repository.
 Both settings must be positive integers. SQL driver statement logging is disabled;
 driver error text and connection URLs are never printed by this adapter.
 
-Migration registration is `persistence::Migrator::migrations()`. It is currently
-empty; only SeaORM's `seaql_migrations` tracking table is created. Each later step
+Migration registration is `persistence::Migrator::migrations()`. Step 3a adds
+`client` and `session` alongside SeaORM's `seaql_migrations` tracking table. Each later step
 adds its own entity mapping, migration, repository and tests. Do not edit applied
 migrations; register a new migration to evolve the schema. Do not import Java's
 whole schema. Startup runs pending migrations automatically and requires DDL
-permission. Run only one application instance during schema deployment; concurrent
-migration orchestration is outside this step.
+permission. Concurrent migration startup is serialized by a transaction-scoped
+advisory lock.
 
 Repositories live under `persistence`, borrow `&impl ConnectionTrait`, and return
 `Result<_, DbErr>`. Application services own transaction boundaries using
