@@ -25,6 +25,7 @@ fn app(db: Persistence, disabled: bool) -> (HttpRouter, Auth) {
         SessionConfig {
             default_expire_minutes: 12,
             path_prefix: "/fixture?session=".into(),
+            ..Default::default()
         },
     );
     (HttpRouter::new().nest("/ws/rest", router.into()), auth)
@@ -121,6 +122,7 @@ fn expiry_normalization_and_db_study_conversion() {
 #[tokio::test]
 #[ignore = "requires dedicated PostgreSQL; included by documented PostgreSQL regression filter"]
 async fn postgres_migrations_transaction_readiness_and_close_create_session() {
+    let _url_guard = crate::api::URL_CONFIG_TEST_LOCK.lock().await;
     let db = Persistence::connect(&crate::config::for_tests().database)
         .await
         .unwrap();
@@ -162,7 +164,7 @@ async fn postgres_migrations_transaction_readiness_and_close_create_session() {
     for field in ["anonymized", "sharedSession", "requiresShareKey"] {
         assert_eq!(s[field], false);
     }
-    assert!(s["shareKey"].is_null());
+    assert!(s.get("shareKey").is_none());
     assert!(
         session::Entity::find_by_id(id)
             .one(conn)
@@ -475,7 +477,7 @@ async fn postgres_migrations_transaction_readiness_and_close_create_session() {
         let (status, result) =
             call(&disabled, "POST", "client/link", input(), credential, None).await;
         assert_eq!(status, 200);
-        assert!(result["session"]["permissions"].is_null());
+        assert!(result["session"].get("permissions").is_none());
         assert!(
             disabled_auth
                 .session(result["session"]["id"].as_str().unwrap())
@@ -528,4 +530,77 @@ async fn postgres_migrations_transaction_readiness_and_close_create_session() {
     assert_eq!(status, 500);
     assert_eq!(error["message"], "Database operation failed");
     assert!(!error.to_string().contains("fixture-store-token"));
+}
+
+#[test]
+fn expiry_integer_strings_and_nullable_response_contract() {
+    for (value, expected) in [
+        (json!("1"), Some(1)),
+        (json!("  +2  "), Some(2)),
+        (json!("-1"), Some(-1)),
+        (json!("2147483647"), Some(i32::MAX)),
+        (json!("-2147483648"), Some(i32::MIN)),
+        (json!(""), None),
+        (json!("  "), None),
+        (Value::Null, None),
+    ] {
+        let modern: LinkInput = serde_json::from_value(json!({"expireIn":value})).unwrap();
+        let legacy: LegacyInput = serde_json::from_value(json!({"expireIn":value})).unwrap();
+        assert_eq!(modern.expire_in, expected);
+        assert_eq!(legacy.expire_in, expected);
+    }
+    for value in [
+        json!("secret-not-an-integer"),
+        json!("2147483648"),
+        json!([]),
+        json!(true),
+    ] {
+        assert!(serde_json::from_value::<LinkInput>(json!({"expireIn":value})).is_err());
+    }
+}
+
+#[tokio::test]
+async fn actionable_json_errors_do_not_echo_input_values() {
+    use summer_web::axum::extract::FromRequest;
+    let cases = [
+        (
+            r#"{"studies":"fixture-sensitive-value"}"#,
+            "Field 'studies'",
+        ),
+        (
+            r#"{"expireIn":"fixture-sensitive-value"}"#,
+            "Field 'expireIn'",
+        ),
+        (r#"{"storeAuth":123}"#, "Field 'storeAuth'"),
+        ("null", "Request body must be a JSON object"),
+        ("{", "Malformed JSON at line"),
+    ];
+    for (raw, expected) in cases {
+        let request = Request::builder()
+            .header("content-type", "application/json")
+            .body(Body::from(raw))
+            .unwrap();
+        let result = Json::<LinkInput>::from_request(request, &()).await;
+        let error = super::super::request::body(result).err().unwrap();
+        assert_eq!(error.0, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(error.2, "INTERNAL_ERROR");
+        assert!(error.1.starts_with(expected), "{}", error.1);
+        assert!(!error.1.contains("fixture-sensitive-value"));
+    }
+    let nested = Request::builder()
+        .header("content-type", "application/json")
+        .body(Body::from(
+            r#"{"studyUIDs":{"fixture-sensitive-study":{"url":123}}}"#,
+        ))
+        .unwrap();
+    let nested = Json::<LegacyInput>::from_request(nested, &()).await;
+    let error = super::super::request::body(nested).err().unwrap();
+    assert!(error.1.starts_with("Field 'studyUIDs'"));
+    assert!(!error.1.contains("fixture-sensitive-study"));
+    let request = Request::builder().body(Body::from("{}")).unwrap();
+    let result = Json::<LinkInput>::from_request(request, &()).await;
+    assert_eq!(
+        super::super::request::body(result).err().unwrap().1,
+        "Content-Type must be application/json"
+    );
 }

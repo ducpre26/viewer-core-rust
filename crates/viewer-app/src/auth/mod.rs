@@ -60,7 +60,9 @@ impl std::ops::Deref for CachedSession {
 }
 
 impl From<session::Model> for CachedSession {
-    fn from(model: session::Model) -> Self {
+    fn from(mut model: session::Model) -> Self {
+        // SessionGetDto.of maps DB NULL permissions to an empty set.
+        model.permissions = Some(model.permissions.take().unwrap_or_default());
         let studies = model
             .studies
             .split(',')
@@ -163,6 +165,9 @@ impl Auth {
         }
         Ok(false)
     }
+    pub(crate) async fn cached_session(&self, id: &str) -> Option<Arc<CachedSession>> {
+        self.sessions.get(id).await
+    }
     pub async fn invalidate_session(&self, id: &str) {
         self.sessions.invalidate(id).await;
     }
@@ -262,6 +267,21 @@ fn session_id(path: &str) -> Option<&str> {
     path.split_once("/session/")
         .map(|(_, value)| value.split('/').next().unwrap_or(""))
 }
+fn extracted_session_id(path: &str, query: Option<&str>) -> Option<String> {
+    if let Some(id) = session_id(path) {
+        return Some(id.to_owned());
+    }
+    let pairs: Vec<_> = url::form_urlencoded::parse(query.unwrap_or_default().as_bytes()).collect();
+    for name in ["session", "sessionId"] {
+        if let Some((_, value)) = pairs
+            .iter()
+            .find(|(key, value)| key == name && !value.is_empty())
+        {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
 fn filtered(path: &str) -> bool {
     path.starts_with("/ws/rest/v1/") || path.starts_with("/ws/rest/client/")
 }
@@ -279,8 +299,10 @@ pub async fn authenticate_request(
         .to_owned();
     let mut context = SecurityContext::default();
     if filtered(&path) {
-        context.session_id = session_id(&path).map(str::to_owned);
-        if let Some(id) = context.session_id.as_deref().filter(|id| !id.is_empty())
+        context.session_id = extracted_session_id(&path, request.uri().query());
+        // Java validates only path sessions; query IDs provide request context
+        // without introducing a new authentication path.
+        if let Some(id) = session_id(&path).filter(|id| !id.is_empty())
             && !path.ends_with(id)
         {
             let value = match auth.session(id).await {

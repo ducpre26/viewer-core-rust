@@ -49,6 +49,7 @@ async fn main() -> std::process::ExitCode {
             auth,
             config.session,
         ));
+    let cleanup = tokio::spawn(api::run_cleanup(database.clone()));
     tokio::select! {
         _ = app.run() => {},
         _ = async {
@@ -61,6 +62,8 @@ async fn main() -> std::process::ExitCode {
             std::process::exit(1);
         }
     }
+    cleanup.abort();
+    let _ = cleanup.await;
     if let Some(jvm) = jvm
         && let Err(error) = jvm.shutdown().await
     {

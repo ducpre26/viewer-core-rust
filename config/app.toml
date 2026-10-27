@@ -33,6 +33,9 @@ admin_username = "${VIEWER_ADMIN_USERNAME:sysadmin}"
 admin_password = "${VIEWER_ADMIN_PASSWORD:sysadmin}"
 
 [session]
+# UC-002: minutes; public URL is PUBLIC_DOMAIN override + PATH_PREFIX + ID.
+maximum_share_minutes = 129600
+public_domain = ""
 default_expire_minutes = ${VIEWER_DEFAULT_EXPIRE_MINUTES:60}
 path_prefix = "${VIEWER_PATH_PREFIX:/viewer?session=}"
 

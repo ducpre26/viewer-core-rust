@@ -174,7 +174,7 @@ enabled = false
 | `database.timeout_seconds` | Số nguyên dương, default 5; giữ phạm vi connect/acquire/readiness/migration hiện tại. |
 | `auth.client_security_disabled` | Boolean, default false; không đổi Basic/IP/admin/session/permission business rules. |
 | `auth.admin_username`, `auth.admin_password` | Chuỗi, giữ default `sysadmin` của implementation trước; cấu hình explicit trong file local/deploy. |
-| `session.default_expire_minutes` | i64, default 60; validate overflow timestamp, giữ normalize expireIn như Java. |
+| `session.default_expire_minutes` | i64, default 60; validate overflow timestamp, giữ normalize expireIn như Java. Step 8/9 nhận expireIn dạng i32 hoặc integer string (trim/dấu; blank thành null); sai kiểu/ngoài i32 bị từ chối trước ghi dữ liệu. |
 | `session.path_prefix` | Chuỗi, default `/viewer?session=`; CONFIG PATH_PREFIX trong DB vẫn ưu tiên cùng cache/invalidation Step 5/8. |
 | `jni.enabled` | Boolean, default false; false không yêu cầu runtime/heap/timeout. |
 | `web`, `logger` | Schema/default và env/profile override của Summer hiện tại, không fork framework. |

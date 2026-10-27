@@ -22,6 +22,7 @@ sea-orm-migration = { version = "1.1", default-features = false, features = ["sq
 url = "2"
 jni = { version = "=0.21.1", features = ["invocation"] }
 serde_json = "1"
+serde_path_to_error = "0.1"
 sha2 = "0.10"
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }

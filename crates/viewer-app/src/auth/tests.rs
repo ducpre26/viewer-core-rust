@@ -71,6 +71,18 @@ fn extraction_and_snapshot_rules() {
     assert_eq!(session_id("/ws/rest/v1/session/a"), Some("a"));
     assert_eq!(session_id("/ws/rest/v1/session//config"), Some(""));
     assert_eq!(session_id("/ws/rest/v1/query"), None);
+    assert_eq!(
+        extracted_session_id("/ws/rest/v1/query", Some("session=a%20b&sessionId=c")),
+        Some("a b".into())
+    );
+    assert_eq!(
+        extracted_session_id("/ws/rest/v1/query", Some("sessionId=c")),
+        Some("c".into())
+    );
+    assert_eq!(
+        extracted_session_id("/ws/rest/v1/session/a", Some("session=b")),
+        Some("a".into())
+    );
     assert!(!permits(None, MODIFY_OVERLAY_CONFIG));
     assert!(!permits(Some(&[]), MODIFY_OVERLAY_CONFIG));
     assert!(!permits(Some(&["other".into()]), MODIFY_OVERLAY_CONFIG));

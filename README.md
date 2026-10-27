@@ -75,14 +75,16 @@ ownership only; they do not claim any migrated capability.
 ## Create viewer session (Step 8)
 
 `POST /ws/rest/client/link` accepts `storeUrl`, `storeAuth`, `studies`, `user`
-and `expireIn` (minutes), and returns `{link, session}`. Basic Auth and IP policy
+and `expireIn` (minutes, a 32-bit integer or integer string), and returns `{link, session}`. Basic Auth and IP policy
 use Step 3a. The deprecated `POST /ws/rest/client/getlink` accepts `studyUIDs`
 (study-to-store map), `userID` and `expireIn`, and returns the Java URL envelope.
 Validation follows Java, including the legacy nested-store exceptions.
 
 New sessions use the shared short-term cache only; no SESSION row is inserted.
 Permission IDs are read from the client's current mappings when creating the
-session. With client security disabled, permissions are null. Basic sysadmin
+session. With client security disabled, permissions remain null internally and
+are omitted from the JSON response. All null session fields are omitted;
+empty arrays, empty strings and false booleans remain present. Basic sysadmin
 must also have a CLIENT row to create a session (otherwise 404), and receives
 only its explicitly assigned permission IDs.
 
@@ -90,13 +92,29 @@ only its explicitly assigned permission IDs.
 |---|---|---|
 | `session.default_expire_minutes` | `60` | Default and maximum requested lifetime; missing/non-positive/over-limit `expireIn` uses this value. |
 | `session.path_prefix` | `/viewer?session=` | Viewer link prefix when CONFIG `PATH_PREFIX` is absent. |
+| `session.public_domain` | empty string | Public sharing domain when CONFIG `PUBLIC_DOMAIN` is absent. |
+| `session.maximum_share_minutes` | `129600` | Maximum shared lifetime; non-positive/over-limit requests fall back to 60 minutes. |
 
-SessionConfig nhận hai khóa này từ registry TOML của Summer.
+SessionConfig nhận các khóa này từ registry TOML của Summer.
 
 CONFIG `PATH_PREFIX` takes priority and shares the Step 5 cache/invalidation.
 Store credentials are included in `/link`'s session response as in Java; they
 are not logged. WADO metadata prefetch remains for Step 11.
 Source comparison and verification: [Step 8](docs/step/step-08-create-session.md).
+
+Step 8/9 accept `expireIn: 1` and `expireIn: "1"` identically, including
+trimmed/signed integer strings. Missing/null/blank strings use the existing
+default for session creation; sharing still requires a non-null duration.
+Invalid strings, unsupported types and values outside the signed 32-bit range
+are rejected before creating a session. The same parser covers legacy getlink.
+
+JSON/body errors in these routes retain HTTP 500 and the envelope
+`{status, errorCode: "INTERNAL_ERROR", message, timestamp}` for compatibility.
+Messages identify the expected type of a known field, a JSON syntax location,
+a required JSON object, or a missing JSON Content-Type. They do not echo input
+values, study IDs or internal exception text. Message text is Rust-specific;
+byte-for-byte equality with Spring/Jackson exception messages is not required.
+Missing required DTO fields still use HTTP 400 / `VALIDATION_ERROR`.
 
 ## Authentication/session foundation (Step 3a)
 

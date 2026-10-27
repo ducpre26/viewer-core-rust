@@ -1,0 +1,338 @@
+[
+  {
+    "name": "link-minimal",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "storeUrl": "http://store.invalid",
+      "studies": [
+        "a"
+      ]
+    }
+  },
+  {
+    "name": "link-full",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "user": "fixture-user",
+      "storeUrl": "http://store.invalid",
+      "storeAuth": "fixture-token",
+      "studies": [
+        "b",
+        "a",
+        "a"
+      ]
+    }
+  },
+  {
+    "name": "link-null-studies",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "storeUrl": "http://store.invalid"
+    }
+  },
+  {
+    "name": "link-empty-studies",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "storeUrl": "http://store.invalid",
+      "studies": []
+    }
+  },
+  {
+    "name": "link-blank-store",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "storeUrl": "",
+      "studies": [
+        "a"
+      ]
+    }
+  },
+  {
+    "name": "link-wrong-type",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "storeUrl": "http://store.invalid",
+      "studies": "a"
+    }
+  },
+  {
+    "name": "link-coerce-integer",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": {
+      "storeUrl": "http://store.invalid",
+      "studies": [
+        "a"
+      ],
+      "expireIn": "1"
+    }
+  },
+  {
+    "name": "link-null-body",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/link",
+    "body": null
+  },
+  {
+    "name": "legacy-valid",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/getlink",
+    "body": {
+      "studyUIDs": {
+        "a": {
+          "url": "http://store.invalid"
+        }
+      }
+    }
+  },
+  {
+    "name": "legacy-missing",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/getlink",
+    "body": {}
+  },
+  {
+    "name": "legacy-null-store",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/getlink",
+    "body": {
+      "studyUIDs": {
+        "a": null
+      }
+    }
+  },
+  {
+    "name": "legacy-empty",
+    "step": 8,
+    "method": "POST",
+    "path": "/ws/rest/client/getlink",
+    "body": {
+      "studyUIDs": {}
+    }
+  },
+  {
+    "name": "get-baseline-source",
+    "step": 9,
+    "method": "GET",
+    "path": "/ws/rest/v1/session/baseline-source",
+    "body": null
+  },
+  {
+    "name": "get-missing",
+    "step": 9,
+    "method": "GET",
+    "path": "/ws/rest/v1/session/missing",
+    "body": null
+  },
+  {
+    "name": "get-baseline-shared",
+    "step": 9,
+    "method": "GET",
+    "path": "/ws/rest/v1/session/baseline-shared",
+    "body": null
+  },
+  {
+    "name": "update-replace",
+    "step": 9,
+    "method": "PUT",
+    "path": "/ws/rest/v1/session",
+    "body": {
+      "id": "baseline-source",
+      "studyInstanceUIDs": [
+        "b",
+        "a"
+      ]
+    }
+  },
+  {
+    "name": "update-nochange",
+    "step": 9,
+    "method": "PUT",
+    "path": "/ws/rest/v1/session",
+    "body": {
+      "id": "baseline-source"
+    }
+  },
+  {
+    "name": "update-empty",
+    "step": 9,
+    "method": "PUT",
+    "path": "/ws/rest/v1/session",
+    "body": {
+      "id": "baseline-source",
+      "studyInstanceUIDs": []
+    }
+  },
+  {
+    "name": "update-missing",
+    "step": 9,
+    "method": "PUT",
+    "path": "/ws/rest/v1/session",
+    "body": {
+      "id": "missing"
+    }
+  },
+  {
+    "name": "update-null-id",
+    "step": 9,
+    "method": "PUT",
+    "path": "/ws/rest/v1/session",
+    "body": {}
+  },
+  {
+    "name": "update-null-body",
+    "step": 9,
+    "method": "PUT",
+    "path": "/ws/rest/v1/session",
+    "body": null
+  },
+  {
+    "name": "share-valid",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": 1
+    }
+  },
+  {
+    "name": "share-fallback",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": 0
+    }
+  },
+  {
+    "name": "share-over-limit",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": 129601
+    }
+  },
+  {
+    "name": "share-max",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": 129600
+    }
+  },
+  {
+    "name": "share-key",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": 1,
+      "anonymized": true,
+      "requiresShareKey": true
+    }
+  },
+  {
+    "name": "share-public",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": 1,
+      "usePublicURL": true
+    }
+  },
+  {
+    "name": "share-required",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {}
+  },
+  {
+    "name": "share-wrong-type",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": {
+      "expireIn": "1"
+    }
+  },
+  {
+    "name": "share-null-body",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-source/share",
+    "body": null
+  },
+  {
+    "name": "share-baseline-shared",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-shared/share",
+    "body": {
+      "expireIn": 1
+    }
+  },
+  {
+    "name": "share-missing",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/missing/share",
+    "body": {
+      "expireIn": 1
+    }
+  },
+  {
+    "name": "share-baseline-key",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-key/share",
+    "body": {
+      "expireIn": 1
+    }
+  },
+  {
+    "name": "share-key-allowed",
+    "step": 9,
+    "method": "POST",
+    "path": "/ws/rest/v1/session/baseline-key/share",
+    "body": {
+      "expireIn": 1
+    },
+    "key": "123456"
+  },
+  {
+    "name": "delete-baseline-source",
+    "step": 9,
+    "method": "DELETE",
+    "path": "/ws/rest/v1/session/baseline-source",
+    "body": null
+  },
+  {
+    "name": "delete-missing",
+    "step": 9,
+    "method": "DELETE",
+    "path": "/ws/rest/v1/session/missing",
+    "body": null
+  }
+]

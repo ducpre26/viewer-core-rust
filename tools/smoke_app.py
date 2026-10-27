@@ -129,9 +129,23 @@ def check(profile, binary, jni_settings=None, process_env=None, framework_overri
             session = created["session"]
             assert uuid.UUID(session["id"]).version == 4
             assert created["link"] == "/smoke?session=" + session["id"]
-            assert session["permissions"] is None
+            assert "permissions" not in session
+            assert "shareKey" not in session
+            assert "storeAuth" not in session
             assert session["studies"] == ["1.2.3"]
             assert get("/v1/session/" + session["id"] + "/config")["header"]["code"] == 302
+            # Step 9: lifecycle through the real TCP stack and persisted sharing.
+            session_path = "/v1/session/" + session["id"]
+            public_session = get(session_path)
+            assert public_session["id"] == session["id"]
+            assert "storeAuth" not in public_session and "storeUrl" not in public_session
+            shared = post(session_path + "/share", {"expireIn": 1})
+            shared_id = shared["link"].split("session=", 1)[1]
+            assert get("/v1/session/" + shared_id)["sharedSession"] is True
+            request = urllib.request.Request(base + "/v1/session/" + shared_id, method="DELETE")
+            with urllib.request.urlopen(request) as response:
+                assert response.status == 200
+                assert response.read().decode() == shared_id
             legacy = post("/client/getlink", {"studyUIDs": {"1.2.3": {"url": "http://store.invalid"}}})
             assert legacy["header"]["code"] == 200
             assert legacy["body"].startswith("/smoke?session=")

@@ -53,9 +53,9 @@ Kiểm tra thủ công khi ứng dụng đang chạy (thay `8888` bằng cổng 
 | `cargo fmt --all -- --check` | Báo lỗi nếu mã chưa đúng định dạng. |
 | `cargo clippy --workspace --all-targets --locked -- -D warnings` | Kiểm tra lint và coi cảnh báo là lỗi. |
 | `cargo test --workspace --locked` | Chạy test không cần DB; test PostgreSQL bị bỏ qua có ghi rõ. |
-| `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored` | Chạy PostgreSQL thật: migration/transaction/readiness, auth/session HTTP/cache (Step 3a), admin CRUD/mapping, unique/FK/cascade/rollback và cache credential (Step 4), config admin/session CRUD/permission/constraint/cache và ghi đồng thời (Step 5), tạo phiên/link/expiry/snapshot quyền và PATH_PREFIX dùng chung cache (Step 8), đóng pool. Cần DB riêng cho test. |
+| `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored` | Chạy PostgreSQL thật: migration/transaction/readiness, auth/session HTTP/cache (Step 3a), admin CRUD/mapping, unique/FK/cascade/rollback và cache credential (Step 4), config admin/session CRUD/permission/constraint/cache và ghi đồng thời (Step 5), tạo phiên/link/expiry/snapshot quyền và PATH_PREFIX dùng chung cache (Step 8), lifecycle/chia sẻ/cleanup/URL public và lỗi DB (Step 9), đóng pool. Cần DB riêng cho test. |
 | `cargo build --workspace --locked` | Build debug cho toàn workspace. |
-| `python tools/smoke_app.py` | Chạy ứng dụng debug thật để kiểm tra HTTP, cấu hình, logging và dừng sạch; Step 8 thêm tạo link/session qua TCP cho cả hai API và dùng session vừa tạo để truy cập config. |
+| `python tools/smoke_app.py` | Chạy ứng dụng debug thật để kiểm tra HTTP, cấu hình, logging và dừng sạch; Step 8 thêm tạo link/session qua TCP cho cả hai API và dùng session vừa tạo để truy cập config; Step 9 kiểm tra GET, chia sẻ DB và DELETE qua TCP. |
 
 Smoke test dùng cổng localhost trống và thư mục config TOML tạm cho từng
 subprocess; chạy dev/prod qua profile loader thật. Thêm kiểm tra interpolation,

@@ -3,11 +3,14 @@ mod admin;
 mod client;
 pub use client::SessionConfig;
 mod config;
+mod request;
 mod response;
+mod session;
 use crate::dicom::Jvm;
 use crate::persistence::Persistence;
 use schemars::JsonSchema;
 use serde::Serialize;
+pub use session::run_cleanup;
 use summer_web::axum::{Extension, http::StatusCode};
 use summer_web::{
     Router,
@@ -72,6 +75,12 @@ pub fn router(
         Router::new()
             .merge(admin::router(auth.clone()))
             .merge(config::router(configs.clone(), auth.clone()))
+            .merge(session::router(
+                database.clone(),
+                auth.clone(),
+                configs.clone(),
+                session_config.clone(),
+            ))
             .merge(client::router(
                 database.clone(),
                 auth.clone(),
@@ -92,6 +101,10 @@ pub fn router(
         auth,
     )
 }
+
+// Suites that mutate shared URL configuration must not race each other.
+#[cfg(test)]
+pub(crate) static URL_CONFIG_TEST_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[cfg(test)]
 mod tests {

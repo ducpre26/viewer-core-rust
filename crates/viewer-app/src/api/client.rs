@@ -25,6 +25,8 @@ use summer_web::{
 pub struct SessionConfig {
     pub default_expire_minutes: i64,
     pub path_prefix: String,
+    pub public_domain: String,
+    pub maximum_share_minutes: i64,
 }
 
 impl Default for SessionConfig {
@@ -32,6 +34,8 @@ impl Default for SessionConfig {
         Self {
             default_expire_minutes: 60,
             path_prefix: "/viewer?session=".into(),
+            public_domain: String::new(),
+            maximum_share_minutes: 129600,
         }
     }
 }
@@ -71,6 +75,8 @@ struct LinkInput {
     store_url: Option<String>,
     store_auth: Option<String>,
     studies: Option<BTreeSet<Option<String>>>,
+    #[serde(default, deserialize_with = "super::request::optional_integer")]
+    #[schemars(with = "Option<super::request::IntegerInput>")]
     expire_in: Option<i32>,
 }
 
@@ -85,6 +91,8 @@ struct LegacyInput {
     #[serde(rename = "userID")]
     user: Option<String>,
     #[serde(rename = "expireIn")]
+    #[serde(default, deserialize_with = "super::request::optional_integer")]
+    #[schemars(with = "Option<super::request::IntegerInput>")]
     expire_in: Option<i32>,
     #[serde(rename = "studyUIDs")]
     studies: Option<BTreeMap<String, Option<LegacyStore>>>,
@@ -144,12 +152,16 @@ impl SessionCreator {
             expired_time: expiry.fixed_offset(),
             permissions,
         };
-        let result = json!({
+        let mut result = json!({
             "id":id, "user":model.user_id, "permissions":model.permissions,
             "storeUrl":model.store_url, "storeAuth":model.store_auth, "studies":studies,
             "anonymized":false, "sharedSession":false, "requiresShareKey":false,
             "shareKey":null, "expiredTime":expiry.to_rfc3339_opts(SecondsFormat::Millis, true),
         });
+        result
+            .as_object_mut()
+            .unwrap()
+            .retain(|_, value| !value.is_null());
         // Java creates the cache entry before generating its URL. A CONFIG
         // failure therefore leaves that short-term entry, without a DB write.
         self.auth
@@ -165,22 +177,12 @@ impl SessionCreator {
     }
 }
 
-fn body<T>(input: std::result::Result<Json<T>, JsonRejection>) -> std::result::Result<T, Error> {
-    input.map(|Json(value)| value).map_err(|_| {
-        Error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Invalid request body".into(),
-            "INTERNAL_ERROR",
-        )
-    })
-}
-
 async fn link(
     Extension(creator): Extension<SessionCreator>,
     Extension(context): Extension<SecurityContext>,
     input: std::result::Result<Json<LinkInput>, JsonRejection>,
 ) -> response::Result {
-    let input = body(input)?;
+    let input = super::request::body(input)?;
     if input.store_url.is_none() || input.studies.is_none() {
         let mut error = response::invalid();
         if input.store_url.is_none() && input.studies.is_none() {
@@ -200,7 +202,7 @@ async fn legacy_link(
     Extension(context): Extension<SecurityContext>,
     input: std::result::Result<Json<LegacyInput>, JsonRejection>,
 ) -> response::Result {
-    let input = body(input)?;
+    let input = super::request::body(input)?;
     let stores = input.studies.ok_or_else(|| {
         let mut error = response::invalid();
         error.1 = "must not be null; must not be empty".into();
