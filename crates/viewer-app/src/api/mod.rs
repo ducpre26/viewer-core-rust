@@ -6,6 +6,7 @@ mod config;
 mod request;
 mod response;
 mod session;
+mod study;
 use crate::dicom::Jvm;
 use crate::persistence::Persistence;
 use schemars::JsonSchema;
@@ -73,6 +74,7 @@ pub fn router(
     let configs = crate::persistence::config::ConfigStore::new(database.clone());
     crate::auth::secure(
         Router::new()
+            .merge(study::router(auth.clone()))
             .merge(admin::router(auth.clone()))
             .merge(config::router(configs.clone(), auth.clone()))
             .merge(session::router(

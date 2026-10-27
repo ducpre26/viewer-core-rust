@@ -1,0 +1,167 @@
+[ {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-0",
+  "input" : "[]",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 0 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 0
+    },
+    "body" : [ ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-1",
+  "input" : "",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 0 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 0
+    },
+    "body" : [ ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-2",
+  "input" : "broken",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 0 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 0
+    },
+    "body" : [ ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-3",
+  "input" : "[{\"00100020\":{\"vr\":\"LO\",\"Value\":[\"P-FIXTURE\"]},\"00100010\":{\"vr\":\"PN\",\"Value\":[{\"Alphabetic\":\"Fixture^A\",\"Ideographic\":\"Fixture^B\",\"Phonetic\":\"Fixture^C\"}]},\"00080061\":{\"vr\":\"CS\",\"Value\":[\"CT\",\"MR\"]}}]",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 1 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 1
+    },
+    "body" : [ {
+      "pid" : "P-FIXTURE",
+      "patientName" : "Fixture^A=Fixture^B=Fixture^C",
+      "modalityType" : "CT"
+    } ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-4",
+  "input" : "{}",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 0 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 0
+    },
+    "body" : [ ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-5",
+  "input" : "[null]",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 0 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 0
+    },
+    "body" : [ ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-6",
+  "input" : "[{\"00100020\":{\"vr\":\"LO\",\"Value\":[\"\"]}}]",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 1 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 1
+    },
+    "body" : [ { } ]
+  }
+}, {
+  "query" : {
+    "PatientID" : "",
+    "StudyDate" : "20260101-",
+    "limit" : "20",
+    "offset" : "0"
+  },
+  "name" : "document-7",
+  "input" : "[{\"00100020\":{\"Value\":[\"bad\"]}}]",
+  "status" : 200,
+  "body" : {
+    "header" : {
+      "code" : 302,
+      "message" : "Found 1 studies",
+      "offset" : -7,
+      "limit" : 0,
+      "totalRecords" : 1
+    },
+    "body" : [ {
+      "pid" : "bad"
+    } ]
+  }
+} ]
