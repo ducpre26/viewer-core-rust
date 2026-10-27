@@ -99,8 +99,15 @@ SessionConfig nhận các khóa này từ registry TOML của Summer.
 
 CONFIG `PATH_PREFIX` takes priority and shares the Step 5 cache/invalidation.
 Store credentials are included in `/link`'s session response as in Java; they
-are not logged. WADO metadata prefetch remains for Step 11.
+are not logged. WADO metadata prefetch is deferred for a later Step 8 follow-up
+by the scope decision on 2026-10-27; it is excluded from Step 11.
 Source comparison and verification: [Step 8](docs/step/step-08-create-session.md).
+
+WADO-RS study/series/instance/frame/thumbnail/metadata/bulk-data retrieval and
+WADO-URI are available in [Step 11](docs/step/step-11-wado-retrieval.md).
+Payloads stream directly from the session's store, retaining upstream status
+and media type. Study scope and session/share-key authentication follow Java.
+Local key-image overlays and metadata prefetch are excluded from this step.
 
 Step 8/9 accept `expireIn: 1` and `expireIn: "1"` identically, including
 trimmed/signed integer strings. Missing/null/blank strings use the existing

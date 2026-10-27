@@ -17,6 +17,7 @@ sea-orm.workspace = true
 sea-orm-migration.workspace = true
 url.workspace = true
 reqwest.workspace = true
+futures-util.workspace = true
 dicom-jvm = { path = "../dicom-jvm" }
 chrono.workspace = true
 uuid.workspace = true

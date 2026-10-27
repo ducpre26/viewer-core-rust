@@ -1,0 +1,6 @@
+simulation: wado
+routing: path
+mocks:
+  - name: wado-store
+    routeKey: store
+    path: postman/mocks/wado-store/config.yaml

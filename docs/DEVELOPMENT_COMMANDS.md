@@ -56,6 +56,8 @@ Kiểm tra thủ công khi ứng dụng đang chạy (thay `8888` bằng cổng 
 | `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close -- --ignored` | Chạy PostgreSQL thật: migration/transaction/readiness, auth/session HTTP/cache (Step 3a), admin CRUD/mapping, unique/FK/cascade/rollback và cache credential (Step 4), config admin/session CRUD/permission/constraint/cache và ghi đồng thời (Step 5), tạo phiên/link/expiry/snapshot quyền và PATH_PREFIX dùng chung cache (Step 8), lifecycle/chia sẻ/cleanup/URL public và lỗi DB (Step 9), đóng pool. Cần DB riêng cho test. |
 | `cargo build --workspace --locked` | Build debug cho toàn workspace. |
 | `python tools/smoke_app.py` | Chạy ứng dụng debug thật để kiểm tra HTTP, cấu hình, logging và dừng sạch; Step 8 thêm tạo link/session qua TCP cho cả hai API và dùng session vừa tạo để truy cập config; Step 9 kiểm tra GET, chia sẻ DB và DELETE qua TCP. |
+| `cargo test -p viewer-app --locked postgres_migrations_transaction_readiness_and_close_wado -- --ignored` | Step 11: fixture Java, session scope/share-key/cache/DB fallback, stream 16 MiB, backpressure/disconnect, truncated body, timeout và lỗi kết nối. Dùng DB theo TOML/profile hiện tại; chỉ thêm rồi xóa SESSION có UUID riêng của test. |
+| `python tools/smoke_wado.py` | Step 11: binary debug thật và Postman store cục bộ qua TCP; dùng DB cấu hình hiện tại, kiểm tra WADO-RS/WADO-URI, upstream error, header/payload, dọn session cache và shutdown. Cần Postman CLI >=1.70; tự chạy/dừng simulation, không đăng nhập hoặc publish. |
 
 Smoke test dùng cổng localhost trống và thư mục config TOML tạm cho từng
 subprocess; chạy dev/prod qua profile loader thật. Thêm kiểm tra interpolation,

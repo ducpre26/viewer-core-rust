@@ -1,0 +1,604 @@
+[
+  {
+    "name": "route-",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/thumbnail",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/thumbnail",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/thumbnail?quality=90&label=a%20b&ignored=yes",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/metadata",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/metadata",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/metadata",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/thumbnail",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/thumbnail",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/thumbnail?quality=90&label=a%20b&ignored=yes",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/metadata",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/metadata",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/metadata",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances/6.7",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "upstreamHeaders": {
+      "accept": [
+        "multipart/related; transfer-syntax=*"
+      ],
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances/6.7/thumbnail",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7/thumbnail",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7/thumbnail?quality=90&label=a%20b&ignored=yes",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances/6.7/metadata",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7/metadata",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7/metadata",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances/6.7/frames/1,2",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7/frames/1,2",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7/frames/1%2C2",
+    "upstreamHeaders": {
+      "accept": [
+        "multipart/related; transfer-syntax=*"
+      ],
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances/6.7/frames/1,2/thumbnail",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7/frames/1,2/thumbnail",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7/frames/1%2C2/thumbnail?quality=90&label=a%20b&ignored=yes",
+    "upstreamHeaders": {
+      "accept": [
+        "multipart/related; transfer-syntax=*"
+      ],
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "route-/series/4.5/instances/6.7/bulk/7FE00010",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7/bulk/7FE00010",
+    "query": "quality=90&label=a%20b&quality=10&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7/bulk/7FE00010",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "uri-14",
+    "path": "/ws/rest/v1/session/s/wado-uri",
+    "query": "studyUID=1.2.3&seriesUID=4.5&objectUID=6.7",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado?studyUID=1.2.3&seriesUID=4.5&objectUID=6.7&requestType=WADO",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "uri-15",
+    "path": "/ws/rest/v1/session/s/wado-uri",
+    "query": "studyUID=1.2.3&seriesUID=4.5&objectUID=6.7&requestType=&contentType=image%2Fjpeg&ignored=yes",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado?studyUID=1.2.3&seriesUID=4.5&objectUID=6.7&requestType=WADO&contentType=image/jpeg",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "uri-16",
+    "path": "/ws/rest/v1/session/s/wado-uri",
+    "query": "studyUID=1.2.3&seriesUID=4.5&objectUID=6.7&requestType=CUSTOM&contentType=",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado?studyUID=1.2.3&seriesUID=4.5&objectUID=6.7&requestType=CUSTOM&contentType",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-204",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 204,
+    "bodyBase64": "",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-206",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 206,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-401",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 401,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-403",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 403,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-404",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 404,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-429",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 429,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-500",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 500,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "upstream-503",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 503,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related; type=\"application/dicom\"; transfer-syntax=1.2.840.10008.1.2.1; boundary=fixture"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3",
+    "upstreamHeaders": {
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    }
+  },
+  {
+    "name": "scope-25",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/outside",
+    "query": "",
+    "status": 500,
+    "bodyBase64": "",
+    "headers": {}
+  },
+  {
+    "name": "scope-26",
+    "path": "/ws/rest/v1/session/missing/wado-rs/studies/1.2.3",
+    "query": "",
+    "status": 500,
+    "bodyBase64": "",
+    "headers": {}
+  },
+  {
+    "name": "uri-required",
+    "path": "/ws/rest/v1/session/s/wado-uri",
+    "query": "studyUID=1.2.3",
+    "status": 500,
+    "headers": {
+      "content-type": [
+        "application/json"
+      ]
+    },
+    "bodyJson": {
+      "status": 500,
+      "errorCode": "INTERNAL_ERROR",
+      "message": "Required request parameter 'seriesUID' for method parameter type String is not present"
+    }
+  },
+  {
+    "name": "no-media-28",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "query": "",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "application/json"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "upstreamHeaders": {
+      "accept": [
+        "*/*"
+      ],
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    },
+    "accept": "*/*",
+    "upstreamMedia": false
+  },
+  {
+    "name": "no-media-29",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "query": "",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "image/jpeg"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "upstreamHeaders": {
+      "accept": [
+        "image/jpeg"
+      ],
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    },
+    "accept": "image/jpeg",
+    "upstreamMedia": false
+  },
+  {
+    "name": "no-media-30",
+    "path": "/ws/rest/v1/session/s/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "query": "",
+    "status": 200,
+    "bodyBase64": "AAECDQr/Kg==",
+    "headers": {
+      "content-disposition": [
+        "inline;filename=f.txt"
+      ],
+      "content-type": [
+        "multipart/related;transfer-syntax=*"
+      ]
+    },
+    "upstreamUrl": "http://fixture.invalid/dicom/wado-rs/studies/1.2.3/series/4.5/instances/6.7",
+    "upstreamHeaders": {
+      "accept": [
+        "multipart/related; transfer-syntax=*"
+      ],
+      "authorization": [
+        "Basic fixture-secret"
+      ]
+    },
+    "accept": "multipart/related; transfer-syntax=*",
+    "upstreamMedia": false
+  }
+]
