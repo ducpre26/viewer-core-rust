@@ -1,5 +1,20 @@
 # Nền tảng JVM/JNI
 
+Rust không dùng Orthanc transcode/native, khác Java. DICOM giữ nguyên byte.
+Tải DICOM/JPEG instance không cần JVM; JPEG lấy frame đã render từ store.
+Java chỉ parse metadata/tạo path ZIP cho study/series và encode MP4.
+
+Step 12 bổ sung `download_metadata`, `download_series`, `download_file` với
+`FileOperation::Video`.
+Queue dùng chung có giới hạn 8,
+worker kiểm tra deadline trước khi thực thi và bỏ job có waiter đã đóng. HTTP
+timeout/disconnect không giải phóng owner của file/permit khi Java còn chạy.
+Mỗi operation dùng local frame; exception được clear trước khi đọc Throwable.
+Readiness dùng capabilities đã kiểm chứng khi worker bận, trả lỗi khi call đang
+chạy quá deadline; không tạo worker thay thế. JavaCPP cache nằm trong `jni.temp_dir`.
+Xem [contract download](../../docs/baseline/step-12-contract.md) và
+[cấu hình thử nghiệm](../../config/download.example.toml).
+
 Crate sở hữu một JVM cho mỗi process, sử dụng `jni = 0.21.1` với feature
 `invocation`. Phiên bản này được chọn theo API đã đối chiếu và kiểm thử trong
 Step 3, không phải tuyên bố là bản mới nhất. Chỉ crate này sử dụng `JNIEnv`,
@@ -86,8 +101,11 @@ runner luôn bật -Xcheck:jni. Không đóng gói artifact gây lỗi vào faca
 Log ở `target/step-03-logs/`: `jni-suite.log`, `jni-<case>.log`, `jni-readiness.log`,
 `app-<profile>-jni.log`, `app-fault-<case>.log`. Bộ test kiểm tra exception recovery,
 attach/detach, local frame, Tokio vẫn tiến triển, lỗi runtime/artifact/contract,
-HTTP readiness và thoát process khi Java call/thread treo. Không kiểm tra DICOM
-corpus, codec, byte/file ownership hay printer trong foundation.
+HTTP readiness và thoát process khi Java call/thread treo. Từ Step 12, case
+`download` kiểm tra queue/deadline, cancellation/file ownership và reference loop
+với video fixture. MP4 thật chạy riêng bằng `smoke_download.py`; JPEG HTTP được
+kiểm tra với fixture nhiều frame và store thật bằng `verify_live_download.py`.
+Printer không thuộc phạm vi kiểm chứng này.
 
 Nguồn đối chiếu:
 [jni-rs 0.21.1 JavaVM](https://docs.rs/jni/0.21.1/jni/struct.JavaVM.html),

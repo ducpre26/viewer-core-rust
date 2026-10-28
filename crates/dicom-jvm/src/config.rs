@@ -114,7 +114,12 @@ impl JvmSettings {
         let mut options = vec![
             format!("-Djava.class.path={classpath}"),
             "-Djava.awt.headless=true".into(),
+            "--enable-native-access=ALL-UNNAMED".into(),
             format!("-Djava.io.tmpdir={}", path_text(&temp)?),
+            format!(
+                "-Dorg.bytedeco.javacpp.cachedir={}",
+                path_text(&temp.join("javacpp"))?
+            ),
             format!("-Djava.library.path={}", path_text(&native)?),
             format!("-Xms{xms}m"),
             format!("-Xmx{xmx}m"),
@@ -175,7 +180,7 @@ fn verify_distribution(root: &Path) -> Result<String, Error> {
     if manifest.schema_version != 1
         || manifest.api_version != 1
         || manifest.facade_version != "0.1.0"
-        || !manifest.capabilities.is_foundation()
+        || !manifest.capabilities.is_supported()
     {
         return Err(Error::Contract);
     }

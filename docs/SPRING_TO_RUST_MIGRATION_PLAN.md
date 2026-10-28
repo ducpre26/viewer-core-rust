@@ -1,5 +1,7 @@
 > **ĐÃ ĐƯỢC THAY THẾ — KHÔNG DÙNG TRIỂN KHAI.** Tài liệu lịch sử của phương án GraalVM/C ABI. Kiến trúc hiện tại là [plan JVM/JNI](SPRING_TO_RUST_JVM_JNI_MIGRATION_PLAN.md), database riêng, phát hành từng tính năng và loại seal. Mọi quyết định/step/cutover bên dưới không còn hiệu lực; giữ nội dung chỉ để tham khảo lịch sử.
 
+> Tài liệu lịch sử về Native Image/C ABI. Thiết kế hiện hành ở [contract Step 12](baseline/step-12-contract.md). Rust không dùng Orthanc transcode/native, khác Java.
+
 # Kế hoạch chuyển đổi 1PACS Viewer Core từ Spring Java sang Rust
 
 | Thuộc tính | Giá trị |

@@ -1,7 +1,9 @@
 //! One embedded JVM per process, owned by a dedicated native worker.
 //! No Java references or environments cross this crate's public boundary.
 mod config;
+mod download;
 pub use config::{JvmConfig, JvmSettings};
+pub use download::{FileLimits, FileOperation, FileRequest};
 
 use jni::{
     InitArgsBuilder, JNIEnv, JNIVersion, JavaVM,
@@ -20,7 +22,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 static JVM_ATTEMPTED: AtomicBool = AtomicBool::new(false);
 const FACADE: &str = "vn/saolasoft/pacs/dicom/DicomFacade";
-// Foundation control messages only. Business scheduling belongs to later steps.
+// Shared bounded queue for control and owned download work; one native worker.
 const CONTROL_QUEUE: usize = 8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,8 +60,8 @@ impl fmt::Display for Error {
                 "JAVA_EXCEPTION_FALLBACK: exception inspection failed; details withheld"
             }
             Self::Unrecoverable => "JVM_FATAL: virtual machine failure; restart process",
-            Self::Busy => "JVM_BUSY: control queue full",
-            Self::Timeout => "JVM_TIMEOUT: worker did not respond; restart process",
+            Self::Busy => "JVM_BUSY: worker queue full",
+            Self::Timeout => "JVM_TIMEOUT: worker deadline exceeded",
             Self::WorkerStopped => "JVM_STOPPED: worker unavailable",
             Self::Shutdown => "JVM_SHUTDOWN: did not stop within limit; terminate process",
         })
@@ -80,8 +82,11 @@ pub struct Capabilities {
     pub codecs: Vec<String>,
 }
 impl Capabilities {
-    fn is_foundation(&self) -> bool {
-        self.api_version == 1 && self.operations.is_empty() && self.codecs.is_empty()
+    fn is_supported(&self) -> bool {
+        self.api_version == 1
+            && self.codecs.is_empty()
+            && (self.operations.is_empty()
+                || self.operations == ["downloadMetadata", "downloadSeries", "encodeVideo"])
     }
 }
 
@@ -95,11 +100,15 @@ enum State {
 }
 
 enum Command {
+    Download(download::Job),
     Probe(oneshot::Sender<Result<Capabilities, Error>>),
     Stop(oneshot::Sender<Result<(), Error>>),
 }
 
 struct Shared {
+    active: Arc<std::sync::atomic::AtomicUsize>,
+    capabilities: watch::Sender<Option<Capabilities>>,
+    running: watch::Sender<Option<std::time::Instant>>,
     sender: mpsc::Sender<Command>,
     state: watch::Sender<State>,
     timeout: Duration,
@@ -111,6 +120,13 @@ struct Shared {
 pub struct Jvm(Arc<Shared>);
 
 impl Jvm {
+    pub fn supports_download(&self) -> bool {
+        self.0.capabilities.borrow().as_ref().is_some_and(|c| {
+            c.operations
+                .iter()
+                .any(|operation| operation == "encodeVideo")
+        })
+    }
     pub async fn start(config: JvmConfig) -> Result<Self, Error> {
         if JVM_ATTEMPTED.swap(true, Ordering::SeqCst) {
             return Err(Error::AlreadyStarted);
@@ -118,7 +134,12 @@ impl Jvm {
         let (sender, receiver) = mpsc::channel(CONTROL_QUEUE);
         let (state, _) = watch::channel(State::Starting);
         let (ready_tx, ready_rx) = oneshot::channel();
+        let (capabilities, _) = watch::channel(None);
+        let (running, _) = watch::channel(None);
         let shared = Arc::new(Shared {
+            active: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            capabilities: capabilities.clone(),
+            running: running.clone(),
             sender,
             state: state.clone(),
             timeout: config.timeout,
@@ -128,7 +149,7 @@ impl Jvm {
             .name("dicom-jni".into())
             .spawn(move || {
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    worker(config, receiver, &state, ready_tx)
+                    worker(config, receiver, &state, ready_tx, capabilities, running)
                 }));
                 if !matches!(result, Ok(Ok(()))) {
                     state.send_replace(State::Failed);
@@ -152,6 +173,24 @@ impl Jvm {
             return Err(Error::WorkerStopped);
         }
         let (reply, receive) = oneshot::channel();
+        // A healthy codec call may outlast a control probe timeout. Use the last
+        // verified capabilities while business work owns the sole JNI worker.
+        if self.0.active.load(Ordering::SeqCst) > 0 {
+            if self
+                .0
+                .running
+                .borrow()
+                .is_some_and(|deadline| std::time::Instant::now() >= deadline)
+            {
+                return Err(Error::Timeout);
+            }
+            return self
+                .0
+                .capabilities
+                .borrow()
+                .clone()
+                .ok_or(Error::WorkerStopped);
+        }
         self.0
             .sender
             .try_send(Command::Probe(reply))
@@ -166,6 +205,9 @@ impl Jvm {
                 Err(Error::WorkerStopped)
             }
             Err(_) => {
+                if self.0.active.load(Ordering::SeqCst) > 0 {
+                    return Err(Error::Timeout);
+                }
                 self.0.state.send_replace(State::Failed);
                 Err(Error::Timeout)
             }
@@ -216,6 +258,8 @@ fn worker(
     mut receiver: mpsc::Receiver<Command>,
     state: &watch::Sender<State>,
     ready: oneshot::Sender<Result<(), Error>>,
+    capabilities: watch::Sender<Option<Capabilities>>,
+    running: watch::Sender<Option<std::time::Instant>>,
 ) -> Result<(), Error> {
     let vm = match create_vm(&config) {
         Ok(vm) => vm,
@@ -246,7 +290,7 @@ fn worker(
             invoke(env, |env| env.new_global_ref(class))
         })
         .and_then(|class| {
-            probe(&mut env, &class)?;
+            capabilities.send_replace(Some(probe(&mut env, &class)?));
             Ok(class)
         });
         let class = match setup {
@@ -263,6 +307,7 @@ fn worker(
         eprintln!("JVM ready: Java 25; facade API 1; JNI worker attached");
         while let Some(command) = receiver.blocking_recv() {
             match command {
+                Command::Download(job) => download::execute(&mut env, &class, job, &running)?,
                 Command::Probe(reply) => {
                     if reply.is_closed() {
                         continue;
@@ -336,7 +381,7 @@ fn probe(env: &mut JNIEnv<'_>, class: &GlobalRef) -> Result<Capabilities, Error>
         let json: String = invoke(env, |env| env.get_string(&text))?.into();
         let capabilities: Capabilities =
             serde_json::from_str(&json).map_err(|_| Error::Contract)?;
-        if !capabilities.is_foundation() {
+        if !capabilities.is_supported() {
             return Err(Error::Contract);
         }
         Ok(capabilities)

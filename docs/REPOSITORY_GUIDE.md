@@ -1,9 +1,19 @@
 # Hướng dẫn cấu trúc repo Rust cho người mới
 
-Tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 4 (2026-10-26).
+Phần bản đồ nền tảng trong tài liệu mô tả repo `1pacs-viewer-core-rust` đến Step 4
+(2026-10-26); cập nhật về download bên dưới phản ánh quyết định 2026-10-27.
 Ứng dụng có HTTP, PostgreSQL, nền tảng JVM/JNI và middleware auth/session.
 Đã có CRUD client/quyền và gán/bỏ gán quyền cho admin (UC-009).
-Chưa triển khai thao tác DICOM nghiệp vụ.
+Luồng download Step 12 hiện có DICOM nguyên byte, JPEG từ WADO-RS rendered và
+MP4 qua JavaCV/FFmpeg. Rust không dùng Orthanc transcode/native, khác Java;
+DICOM/JPEG instance không cần JVM. ZIP study/series dùng Java cho metadata/tên
+đường dẫn, MP4 dùng JavaCV/FFmpeg qua JNI. Đây là phần đang triển khai, chưa phải
+xác nhận toàn bộ Step 12 đã đạt mọi tiêu chí.
+
+Nguồn mô tả hiện hành: [contract download](baseline/step-12-contract.md),
+[tiến độ Step 12](step/step-12-dicom-download.md) và
+[lệnh kiểm tra](DEVELOPMENT_COMMANDS.md). Các ví dụ nền tảng phía dưới không phải
+danh sách đầy đủ mọi route/operation đã bổ sung sau Step 4.
 
 ## 1. Một số khái niệm trước khi đọc
 

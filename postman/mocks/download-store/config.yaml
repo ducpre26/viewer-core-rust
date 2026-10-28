@@ -1,0 +1,10 @@
+version: 1
+name: download-store
+slug: download-store
+protocol: http
+port: 4501
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

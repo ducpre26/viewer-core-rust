@@ -41,14 +41,24 @@ async fn main() -> std::process::ExitCode {
         None => None,
     };
     let auth = Auth::new(database.clone(), config.auth);
+    let download = match api::DownloadRuntime::new(config.download, jvm.clone()) {
+        Ok(runtime) => runtime,
+        Err(message) => {
+            eprintln!("Download configuration error: {message}");
+            if let Some(jvm) = &jvm {
+                let _ = jvm.shutdown().await;
+            }
+            let _ = database.close().await;
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let mut router = api::router(database.clone(), jvm.clone(), auth, config.session);
+    if let Some(download) = download {
+        router = router.layer(summer_web::axum::Extension(download));
+    }
     app.add_plugin(WebPlugin)
         .add_plugin(JobPlugin)
-        .add_router(api::router(
-            database.clone(),
-            jvm.clone(),
-            auth,
-            config.session,
-        ));
+        .add_router(router);
     let cleanup = tokio::spawn(api::run_cleanup(database.clone()));
     tokio::select! {
         _ = app.run() => {},

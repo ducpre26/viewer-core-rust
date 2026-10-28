@@ -61,6 +61,7 @@ fn jvm_subprocess_suite() {
     fs::write(bad_java.join("release"), "JAVA_VERSION=\"24.0.1\"\n").unwrap();
     for case in [
         "normal",
+        "download",
         "lib-only",
         "exceptions",
         "slow",
@@ -317,6 +318,11 @@ fn child(case: &str, settings: &JvmSettings) {
             _ => {}
         }
         let jvm = started.unwrap();
+        if case == "download" {
+            download_checks(&jvm).await;
+            jvm.shutdown().await.unwrap();
+            return;
+        }
         if case == "hang-probe" {
             assert_eq!(jvm.check().await, Err(Error::Timeout));
             tokio::time::timeout(Duration::from_secs(1), jvm.wait_failed())
@@ -346,7 +352,7 @@ fn child(case: &str, settings: &JvmSettings) {
             assert!(start.elapsed() >= Duration::from_millis(450));
         } else {
             for _ in 0..2000 {
-                assert!(jvm.check().await.unwrap().is_foundation());
+                assert!(jvm.check().await.unwrap().is_supported());
             }
         }
         if case == "java-thread" {
@@ -393,7 +399,7 @@ fn exception_checks(config: JvmConfig) {
                         Ok(())
                     })
                     .unwrap();
-                    assert!(probe(&mut env, &class).unwrap().is_foundation());
+                    assert!(probe(&mut env, &class).unwrap().is_supported());
                 }
             }
         }
@@ -404,4 +410,191 @@ fn exception_checks(config: JvmConfig) {
     })
     .join()
     .unwrap();
+}
+
+async fn download_checks(jvm: &Jvm) {
+    use tokio::sync::Semaphore;
+    struct Owner {
+        directory: tempfile::TempDir,
+        _permit: tokio::sync::OwnedSemaphorePermit,
+    }
+    let slots = Arc::new(Semaphore::new(1));
+    let owner = Arc::new(Owner {
+        directory: tempfile::tempdir().unwrap(),
+        _permit: slots.clone().try_acquire_owned().unwrap(),
+    });
+    let root = owner.directory.path().to_owned();
+    let input = root.join("input");
+    fs::write(&input, "slow").unwrap();
+    let weak = Arc::downgrade(&owner);
+    let request = FileRequest {
+        operation: FileOperation::Video { fps: 1 },
+        input: input.clone(),
+        output: root.join("output"),
+        limits: FileLimits {
+            input_bytes: 1024,
+            output_bytes: 1024,
+            pixels: 4096,
+            frames: 10,
+        },
+        owner: owner.clone(),
+    };
+    let result = jvm
+        .download_file(request, Instant::now() + Duration::from_millis(200))
+        .await;
+    assert_eq!(result, Err(Error::Timeout));
+    assert!(
+        root.join("input.started").exists(),
+        "Java actually entered the slow operation"
+    );
+    drop(owner);
+    assert!(weak.upgrade().is_some());
+    assert!(root.exists());
+    assert_eq!(slots.available_permits(), 0);
+    assert_eq!(
+        jvm.check().await,
+        Err(Error::Timeout),
+        "Overdue native call makes readiness unavailable without releasing its lease"
+    );
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    assert!(weak.upgrade().is_none());
+    assert!(!root.exists());
+    assert_eq!(slots.available_permits(), 1);
+
+    let directory = Arc::new(tempfile::tempdir().unwrap());
+    let input = directory.path().join("input");
+    fs::write(&input, "slow").unwrap();
+    let worker = jvm.clone();
+    let lease = directory.clone();
+    let source = input.clone();
+    let running = tokio::spawn(async move {
+        worker
+            .download_file(
+                FileRequest {
+                    operation: FileOperation::Video { fps: 1 },
+                    input: source,
+                    output: lease.path().join("output"),
+                    limits: FileLimits {
+                        input_bytes: 1024,
+                        output_bytes: 1024,
+                        pixels: 4096,
+                        frames: 10,
+                    },
+                    owner: lease,
+                },
+                Instant::now() + Duration::from_secs(5),
+            )
+            .await
+    });
+    let started = input.with_file_name("input.started");
+    tokio::time::timeout(Duration::from_secs(3), async {
+        while !started.exists() {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let mut queued = Vec::new();
+    for _ in 0..20 {
+        let worker = jvm.clone();
+        queued.push(tokio::spawn(async move {
+            worker
+                .download_series("[]".into(), 10, Instant::now() + Duration::from_millis(100))
+                .await
+        }));
+    }
+    let mut busy = 0;
+    let mut timeout = 0;
+    for task in queued {
+        match task.await.unwrap() {
+            Err(Error::Busy) => busy += 1,
+            Err(Error::Timeout) => timeout += 1,
+            other => panic!("unexpected queue result {other:?}"),
+        }
+    }
+    assert!(
+        busy > 0 && timeout > 0,
+        "bounded admission and queued deadlines"
+    );
+    running.await.unwrap().unwrap();
+    fs::write(&input, "throw").unwrap();
+    let result = jvm
+        .download_file(
+            FileRequest {
+                operation: FileOperation::Video { fps: 1 },
+                input: input.clone(),
+                output: directory.path().join("error-output"),
+                limits: FileLimits {
+                    input_bytes: 1024,
+                    output_bytes: 1024,
+                    pixels: 4096,
+                    frames: 10,
+                },
+                owner: directory.clone(),
+            },
+            Instant::now() + Duration::from_secs(3),
+        )
+        .await;
+    assert_eq!(result, Err(Error::JavaException));
+    for _ in 0..2000 {
+        assert_eq!(
+            jvm.download_series("[]".into(), 10, Instant::now() + Duration::from_secs(3))
+                .await
+                .unwrap(),
+            "[]"
+        );
+    }
+    assert!(jvm.check().await.is_ok());
+}
+
+#[test]
+#[ignore = "requires real packaged facade and synthetic DICOM; run tools/smoke_download.py"]
+fn jvm_download_video() {
+    let settings = test_settings();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    runtime.block_on(async {
+        let jvm = Jvm::start(settings.validate().unwrap().unwrap())
+            .await
+            .unwrap();
+        assert!(jvm.supports_download());
+        let owner = Arc::new(tempfile::tempdir_in(settings.temp_dir.as_ref().unwrap()).unwrap());
+        let source = owner.path().join("source.dcm");
+        fs::copy(
+            std::env::var_os("JNI_DOWNLOAD_SOURCE").expect("synthetic input path"),
+            &source,
+        )
+        .unwrap();
+        let manifest = owner.path().join("inputs.txt");
+        fs::write(&manifest, format!("{}\n", source.display())).unwrap();
+        let output = owner.path().join("video.mp4");
+        jvm.download_file(
+            FileRequest {
+                operation: FileOperation::Video { fps: 1 },
+                input: manifest,
+                output: output.clone(),
+                limits: FileLimits {
+                    input_bytes: 1024 * 1024,
+                    output_bytes: 1024 * 1024,
+                    pixels: 4096,
+                    frames: 10,
+                },
+                owner: owner.clone(),
+            },
+            Instant::now() + Duration::from_secs(20),
+        )
+        .await
+        .unwrap();
+        let bytes = fs::read(output).unwrap();
+        assert!(bytes.windows(4).any(|b| b == b"ftyp"));
+        fs::write(
+            std::env::var_os("JNI_DOWNLOAD_OUTPUT").expect("test output path"),
+            bytes,
+        )
+        .unwrap();
+        drop(owner);
+        jvm.shutdown().await.unwrap();
+    });
 }

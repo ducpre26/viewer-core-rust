@@ -1,5 +1,7 @@
 //! HTTP infrastructure; business routes belong to their migration steps.
 mod admin;
+mod download;
+pub use download::{DownloadRuntime, DownloadSettings};
 mod client;
 pub use client::SessionConfig;
 mod config;
@@ -75,6 +77,7 @@ pub fn router(
     let configs = crate::persistence::config::ConfigStore::new(database.clone());
     crate::auth::secure(
         Router::new()
+            .merge(download::router(auth.clone(), configs.clone()))
             .merge(wado::router(auth.clone()))
             .merge(study::router(auth.clone()))
             .merge(admin::router(auth.clone()))

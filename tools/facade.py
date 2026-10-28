@@ -1,4 +1,4 @@
-"""Build/verify the minimal facade with an explicit JDK and packaged-only classpath."""
+"""Build/verify the Java facade with an explicit JDK and packaged-only classpath."""
 
 import argparse
 import hashlib
@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "java" / "dicom-facade"
 DIST = MODULE / "target" / "distribution"
 LOGS = ROOT / "target" / "step-03-logs"
-EXPECTED = {"apiVersion": 1, "operations": [], "codecs": []}
+EXPECTED = {"apiVersion": 1, "operations": ["downloadMetadata", "downloadSeries", "encodeVideo"], "codecs": []}
 
 
 def run(command, env, log, timeout=120):
@@ -45,10 +45,16 @@ def smoke(java_home, env):
     jar = DIST / "pacs-dicom-facade.jar"
     if not jar.is_file() or not (DIST / "dependencies").is_dir():
         raise RuntimeError("Missing facade JAR/dependencies directory; run build first")
+    for artifact in [jar, *sorted((DIST / "dependencies").glob("*.jar"))]:
+        if "orthanc" in artifact.name.lower():
+            raise RuntimeError("Orthanc must not be packaged in the Rust facade distribution")
+        with zipfile.ZipFile(artifact) as archive:
+            if any(name.startswith("org/orthanc/") or "orthanc_transcode" in name.lower() for name in archive.namelist()):
+                raise RuntimeError("Orthanc classes/native library found in the facade distribution")
     with zipfile.ZipFile(jar) as archive:
         classes = {name for name in archive.namelist() if name.endswith(".class")}
-        if classes != {"vn/saolasoft/pacs/dicom/DicomFacade.class"}:
-            raise RuntimeError("Unexpected classes in foundation JAR")
+        if classes != {"vn/saolasoft/pacs/dicom/DicomFacade.class", "vn/saolasoft/pacs/dicom/LimitedOutput.class"}:
+            raise RuntimeError("Unexpected classes in facade JAR")
         manifest = archive.read("META-INF/MANIFEST.MF").decode("utf-8")
         if "Facade-Api-Version: 1" not in manifest.splitlines():
             raise RuntimeError("JAR manifest API version mismatch")
@@ -103,7 +109,7 @@ def main():
         dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
         manifest = {"schemaVersion": 1, "facadeVersion": version, "apiVersion": 1,
                     "capabilities": EXPECTED, "source": {"gitCommit": revision, "dirty": dirty},
-                    "testedRuntime": runtime, "dcm4cheVersion": None,
+                    "testedRuntime": runtime, "dcm4cheVersion": "5.33.1",
                     "artifacts": artifact_hashes()}
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     else:
@@ -113,7 +119,7 @@ def main():
         if manifest["artifacts"] != artifact_hashes():
             raise RuntimeError("Distribution JAR checksum/inventory mismatch")
         runtime = smoke(java_home, env)
-    print(f"PASS: packaged facade API 1, no DICOM operations/codecs; runtime {runtime}")
+    print(f"PASS: packaged facade API 1, download operations; native codecs require corpus verification; runtime {runtime}")
     print(f"Distribution: {DIST}")
 
 

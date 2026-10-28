@@ -1,0 +1,5 @@
+# Optional independent output verification; install into target/step-12-tools.
+imageio-ffmpeg==0.6.0
+pydicom==3.0.1
+pillow==11.3.0
+psutil==7.1.0

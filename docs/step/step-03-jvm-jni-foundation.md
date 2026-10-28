@@ -1,5 +1,10 @@
 # Step 3 - Khởi tạo JVM/JNI và facade tối thiểu
 
+> Hợp đồng và bằng chứng foundation bên dưới phản ánh thời điểm triển khai Step 3.
+> Hợp đồng hiện hành ở [Step 12](step-12-dicom-download.md): facade có
+> downloadMetadata/downloadSeries/encodeVideo. Rust không dùng Orthanc transcode/native, khác Java. Operations/codecs rỗng của foundation
+> là dữ liệu lịch sử, không phải capabilities hiện tại của artifact production.
+
 > Refactor TOML ngày 2026-10-26: module nhận typed config từ registry Summer;
 > giữ app.toml/profile/interpolation/RUST_LOG theo xác nhận người dùng.
 > Checklist/evidence bên dưới là lịch sử step; kết quả refactor mới nằm trong
@@ -7,7 +12,7 @@
 
 ## Tính năng
 
-Sau khung Rust/DB, tạo kết nối JVM 25 và facade không Spring. Chưa đối chiếu hoặc triển khai toàn bộ parse/render/transcode/key-image/print.
+Sau khung Rust/DB, tạo kết nối JVM 25 và facade không Spring. Step này chỉ kiểm chứng lifecycle/version/capabilities; các operation nghiệp vụ được triển khai và kiểm chứng tại step tính năng.
 
 **JNI:** Có — JVM startup và facade smoke test.
 

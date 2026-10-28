@@ -1,0 +1,6 @@
+simulation: download-failures
+routing: path
+mocks:
+  - name: download-store
+    routeKey: store
+    path: postman/mocks/download-store/config.yaml

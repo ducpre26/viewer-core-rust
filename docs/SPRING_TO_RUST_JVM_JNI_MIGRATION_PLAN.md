@@ -11,6 +11,7 @@ Mỗi tính năng đang có trong Java Spring BE sẽ có chức năng tương �
 - Rust quản lý API, nghiệp vụ, auth/session, database, cache, scheduler, HTTP proxy và Python/Trame.
 - Cấu hình vận hành thống nhất bằng [TOML](SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config) theo quyết định 2026-10-26; không đọc env làm nguồn cấu hình từng module. Contract đã chốt, refactor code/harness/CI chưa triển khai.
 - **Giữ dcm4che trên JVM nhúng qua JNI** cho xử lý DICOM và in. JVM không chạy Spring hoặc mở HTTP server. Không dùng GraalVM Native Image.
+- **Khác Java:** Rust không dùng Orthanc transcode/native; DICOM nguyên byte, JPEG từ store.
 - Init Rust và kết nối DB trước; baseline/fixture Java được thu theo từng tính năng khi triển khai, pipeline Rust kiểm thử độc lập.
 
 ## 2. Bảng ánh xạ tính năng Java → Rust
@@ -23,7 +24,7 @@ Cột Rust mô tả phần cần mang sang, chưa phải xác nhận đã triể
 | UC-002 — Quản lý và chia sẻ phiên 2D | [SessionAPI + session](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/session/rest/SessionAPI.java) | Get/update/end/share session; cache trước, DB riêng sau; giữ share key và cleanup hết hạn. | Không | [Step 9](step/step-09-session-lifecycle.md) |
 | UC-003 — Tra cứu study | [StudyAPI + study/qido](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/study/rest/StudyAPI.java) | Giữ tìm kiếm, filter, phân trang, sort và response; gọi PACS bằng QIDO-RS. | Không mặc định | [Step 10](step/step-10-qido-study.md) |
 | UC-004 — Truy xuất ảnh DICOM | [WadoRsAPI + wado](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/wado/rest/WadoRsAPI.java) | Proxy study/series/instance/frame/thumbnail/metadata/bulk data; giữ study scope, header và streaming. | Chỉ khi cần normalize DICOM | [Step 11](step/step-11-wado-retrieval.md) |
-| UC-005 — Tải DICOM/JPEG/MP4 | [DownloadAPI + file](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/file/rest/DownloadAPI.java) | Giữ phạm vi download, ZIP/naming và output; Rust điều phối file/FFmpeg, Java xử lý DICOM. | Render/transcode | [Step 12](step/step-12-dicom-download.md) |
+| UC-005 — Tải DICOM/JPEG/MP4 | [DownloadAPI + file](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/file/rest/DownloadAPI.java) | Giữ phạm vi và ZIP/naming; DICOM nguyên byte, JPEG từ WADO-RS rendered, khác Java. | Chỉ metadata/tên ZIP và JavaCV/FFmpeg MP4 | [Step 12](step/step-12-dicom-download.md) |
 | UC-006 — Nhận và xuất key image | [StowRSAPI + stowrs/keyimage](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/stowrs/rest/StowRSAPI.java) | Nhận multipart, tạo DICOM, lưu pending batch, retry và gửi STOW; giữ cleanup. | Tạo/validate/ghi DICOM | [Step 13](step/step-13-key-image.md) |
 | UC-007 — Phiên dựng hình 3D | [Session3DAPI + session3d](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/session3d/rest/Session3DAPI.java) | Giữ create/list/get/delete/reset, process pool Python/Trame, port allocation và WebSocket. | Không cho orchestration | [Step 14](step/step-14-session-3d.md) |
 | UC-008 — Cấu hình Viewer | [ConfigPublicAPI + phần config của AdminAPI](../../1pacs-viewer-core/src/main/java/vn/saolasoft/viewer/module/util/rest/ConfigPublicAPI.java) | Giữ CRUD config, validation, cache/invalidation và quyền sửa overlay. | Không | [Step 5](step/step-05-viewer-config.md) |

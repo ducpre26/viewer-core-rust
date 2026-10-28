@@ -43,6 +43,22 @@ public final class DicomFacade {
         throw new IllegalArgumentException("PRIVATE_PATIENT_TOKEN /sensitive/path password=secret");
     }
 
+    public static String downloadSeries(String json,int max) { return "[]"; }
+    public static String downloadMetadata(String json,String pattern,String index,int max) { return "[]"; }
+    public static void encodeVideo(String source,String destination,int fps,long input,long output,long pixels,int frames) throws Exception {
+        String text=java.nio.file.Files.readString(java.nio.file.Path.of(source));
+        if(!text.equals("slow") && !text.equals("throw") && !text.isEmpty()) {
+            String first=text.lines().findFirst().orElse("");
+            text=new String(java.nio.file.Files.readAllBytes(java.nio.file.Path.of(first)),java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if(text.equals("throw")) throw new IllegalArgumentException("PRIVATE_PATIENT_TOKEN");
+        if(text.equals("slow")) {
+            java.nio.file.Files.writeString(java.nio.file.Path.of(source+".started"),"started");
+            Thread.sleep(700);
+        }
+        java.nio.file.Files.writeString(java.nio.file.Path.of(destination),text.isEmpty()?"":"fixture-mp4");
+    }
+
     static final class BrokenMessage extends RuntimeException {
         @Override public String getMessage() {
             throw new IllegalStateException("PRIVATE_PATIENT_TOKEN inspection failure");

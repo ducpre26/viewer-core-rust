@@ -34,6 +34,9 @@
 
 ## Contract cấu hình chung
 
+Rust không dùng Orthanc transcode/native, khác Java. Phạm vi và tiến độ download
+ở [Step 12](step-12-dicom-download.md).
+
 Theo [contract TOML](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#toml-config)
 được người dùng xác nhận: giữ nguyên Summer nạp app.toml, overlay theo profile,
 interpolation env và RUST_LOG override. Module nhận typed config từ registry;
@@ -82,6 +85,6 @@ Chỉ `done` khi hoàn thành checklist và kiểm tra đạt, có bằng chứn
 
 ## Công nghệ và điểm còn mở
 
-Dùng [T1–T13 đã chốt](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#decisions). [T7 bổ sung, T14, phiên bản và P1–P4](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#open-decisions) còn mở; ghi vào **Tiến độ** khi có quyết định. Không tự điền tham số hoặc đổi kiến trúc.
+Dùng [T1–T14 đã chốt](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#decisions); T14 giữ Java FFmpeg binding theo xác nhận người dùng 2026-10-27. [T7 bổ sung, phiên bản và P1–P4](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#open-decisions) còn mở; ghi vào **Tiến độ** khi có quyết định. Không tự điền tham số hoặc đổi kiến trúc.
 
 Đối chiếu công nghệ với [nguồn chính thức](../SPRING_TO_RUST_JVM_JNI_TECHNICAL_REFERENCE.md#technology-sources); tài liệu phải khớp phiên bản dependency đã chốt. Không cần chờ Step 18 để phát hành tính năng đã đạt yêu cầu.

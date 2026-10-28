@@ -5,8 +5,23 @@
 [Các lệnh trong vòng đời phát triển](docs/DEVELOPMENT_COMMANDS.md) — chạy dev,
 kiểm tra, build release và xem thay đổi trước khi commit.
 
-Infrastructure for the Java-to-Rust migration, including PostgreSQL persistence.
-JVM/JNI foundation is implemented; business DICOM operations are not implemented yet.
+Backend Rust cho quá trình chuyển từ Java, với HTTP, PostgreSQL và JVM/JNI.
+Download Step 12 đã có code và bằng chứng kiểm tra; tiến độ cùng các kiểm tra
+còn lại được ghi tại [Step 12](docs/step/step-12-dicom-download.md).
+
+## Download và dependency hiện tại
+
+Rust không dùng Orthanc transcode/native, khác Java.
+
+| Output | Xử lý trong repo Rust |
+|---|---|
+| DICOM | Trả nguyên byte từ store, giữ transfer syntax, kể cả trong ZIP. |
+| JPEG | Lấy từng frame qua WADO-RS rendered của store; không render local. |
+| ZIP study/series | Rust đóng gói; Java chỉ parse metadata và tạo tên đường dẫn. |
+| MP4 | JavaCV/FFmpeg qua JVM/JNI theo T14. |
+
+DICOM/JPEG instance chạy được khi JNI tắt. Store phải hỗ trợ rendered-frame JPEG. Xem [contract download](docs/baseline/step-12-contract.md)
+và [cấu hình mẫu](config/download.example.toml).
 
 ## Run
 
@@ -33,6 +48,9 @@ Summer-web currently pulls in aide 0.16.0-alpha.4 for OpenAPI; it is locked too.
 | `/ws/rest/v1/admin/permission`, `/ws/rest/v1/admin/permission/{id}` | Admin permission catalog CRUD (Step 4) |
 | `/ws/rest/v1/admin/client/{id}/permission` | Admin client permission list/assign (Step 4) |
 | `/ws/rest/v1/admin/client/{id}/permission/{permissionId}` | Admin client permission removal (Step 4) |
+
+Download dùng `/ws/rest/v1/session/{sessionID}/download/studies/{studyUID}` và
+các route series/instance bên dưới, theo phạm vi tại Step 12.
 
 Default address: `127.0.0.1:8888`. Stop with Ctrl+C on Windows or SIGTERM/Ctrl+C on
 Linux. Summer's web server drains in-flight requests and its job plugin shuts

@@ -1,0 +1,162 @@
+[ {
+  "scope" : "study",
+  "type" : "",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "study",
+  "type" : "unknown",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "study",
+  "type" : "pdf",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "study",
+  "type" : "mp4",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "series",
+  "type" : "",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "series",
+  "type" : "unknown",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "series",
+  "type" : "pdf",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "instance",
+  "type" : "",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "instance",
+  "type" : "unknown",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "instance",
+  "type" : "pdf",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "instance",
+  "type" : "mp4",
+  "status" : 415,
+  "errorCode" : "UNSUPPORTED_MEDIA_TYPE"
+}, {
+  "scope" : "study",
+  "type" : "DICOM",
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.zip",
+  "entries" : {
+    "undefined-undefined/undefined/0-undefined/1.2.3.4.5.dcm" : "AQID"
+  }
+}, {
+  "scope" : "study",
+  "type" : "JPEG",
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.zip",
+  "entries" : {
+    "undefined-undefined/undefined/0-undefined/1.2.3.4.5_0.jpeg" : "/wAq",
+    "undefined-undefined/undefined/0-undefined/1.2.3.4.5_1.jpeg" : "/wEq"
+  }
+}, {
+  "scope" : "series",
+  "type" : "DICOM",
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.zip",
+  "entries" : {
+    "undefined-undefined/undefined/1-undefined/1.2.3.4.5.dcm" : "AQID"
+  }
+}, {
+  "scope" : "series",
+  "type" : "JPEG",
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.zip",
+  "entries" : {
+    "undefined-undefined/undefined/1-undefined/1.2.3.4.5_0.jpeg" : "/wAq",
+    "undefined-undefined/undefined/1-undefined/1.2.3.4.5_1.jpeg" : "/wEq"
+  }
+}, {
+  "scope" : "instance",
+  "type" : "DICOM",
+  "status" : 200,
+  "contentType" : "application/dicom",
+  "disposition" : "attachment;filename=1.2.3.4.5.dcm",
+  "body" : "AQID"
+}, {
+  "scope" : "instance",
+  "type" : "JPEG",
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.4.5.zip",
+  "entries" : {
+    "1/" : "",
+    "1/0.jpeg" : "/wAq",
+    "1/1.jpeg" : "/wEq"
+  }
+}, {
+  "type" : "JPEG",
+  "scope" : "instance",
+  "status" : 200,
+  "metadataFrames" : 1,
+  "contentType" : "application/jpeg",
+  "body" : "/wAq",
+  "disposition" : "attachment;filename=1.2.3.4.5.jpeg"
+}, {
+  "scope" : "series",
+  "type" : "DICOM",
+  "emptySeries" : true,
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.zip",
+  "entries" : { }
+}, {
+  "scope" : "series",
+  "type" : "JPEG",
+  "emptySeries" : true,
+  "status" : 200,
+  "contentType" : "application/zip",
+  "disposition" : "attachment;filename=1.2.3.zip",
+  "entries" : { }
+}, {
+  "scope" : "series",
+  "type" : "MP4",
+  "emptySeries" : true,
+  "status" : 200,
+  "contentType" : "video/mp4",
+  "disposition" : "attachment;filename=1.2.3.mp4",
+  "body" : ""
+}, {
+  "scope" : "study",
+  "type" : "DICOM",
+  "status" : 200,
+  "emptyBody" : true,
+  "outsideStudy" : true
+}, {
+  "scope" : "series",
+  "type" : "DICOM",
+  "status" : 200,
+  "emptyBody" : true,
+  "outsideStudy" : true
+}, {
+  "scope" : "instance",
+  "type" : "DICOM",
+  "status" : 200,
+  "emptyBody" : true,
+  "outsideStudy" : true
+} ]

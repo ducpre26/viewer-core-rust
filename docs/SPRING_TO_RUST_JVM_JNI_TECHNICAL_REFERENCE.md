@@ -90,7 +90,7 @@ Source code Spring hiện tại là nguồn đối chiếu kỹ thuật và hàn
 | UC-002 | Quản lý và chia sẻ phiên 2D | `SESSION`, `CONFIG` | Không |
 | UC-003 | Tra cứu study DICOM | `SESSION` | Không bắt buộc; dùng HTTP QIDO-RS |
 | UC-004 | Truy xuất dữ liệu ảnh DICOM | `SESSION` | Chỉ dùng khi cần parse/normalize DICOM JSON; proxy streaming do Rust |
-| UC-005 | Tải nội dung DICOM | `SESSION` | Transcode/render DICOM qua Java facade |
+| UC-005 | Tải nội dung DICOM | `SESSION`, `CONFIG` | DICOM nguyên byte, JPEG lấy từ WADO-RS rendered bằng Rust; Java chỉ metadata/video. Không dùng Orthanc transcode/native, khác Java |
 | UC-006 | Tiếp nhận và xuất key image | `SESSION`, `STUDY_KEY_IMAGE`, `CONFIG` | Validate/tạo/ghi DICOM qua Java facade |
 | UC-007 | Quản lý phiên dựng hình 3D | `SESSION`; phiên 3D là runtime registry | Không cho orchestration; DICOM engine chỉ dùng gián tiếp nếu cần tiền xử lý |
 | UC-008 | Quản lý cấu hình Viewer | `CONFIG` | Không |
@@ -287,14 +287,15 @@ java/dicom-facade/
     └── test/java/...
 ```
 
-Facade dùng bộ dependency Java hiện tại làm baseline (dcm4che 5.33.1 theo pom.xml nguồn); không nâng dependency trong đợt port. Chỉ lấy dependency cần cho DICOM, không mang Spring sang.
+Facade dùng bộ dependency Java hiện tại làm baseline (dcm4che 5.33.1 theo pom.xml nguồn); không nâng dependency trong đợt port. Chỉ lấy dependency cần cho DICOM, không mang Spring sang. Rust không dùng Orthanc transcode/native, khác Java. JavaCV/FFmpeg cho MP4 giữ theo T14.
 
-Facade cung cấp operation coarse-grained:
+Facade hiện tại cung cấp `downloadMetadata`, `downloadSeries`, `encodeVideo` ngoài
+hai method kiểm tra version/capabilities. Không còn method render/transcode local.
+Các operation định hướng cho những tính năng chưa triển khai chỉ bổ sung tại step
+cần sử dụng, ví dụ:
 
 - `parseToJson(byte[])`
 - `validate(byte[])`
-- `transcode(byte[], options)` hoặc `transcodeFile(input, output, options)`
-- `renderFrame(byte[], frameIndex, options)`
 - `createKeyImage(request)`
 - `print(PrintRequest)`
 - Các operation DIMSE khác chỉ khi repo thực sự sử dụng.
@@ -309,12 +310,13 @@ Facade phải cung cấp:
 public final class DicomFacade {
     public static int apiVersion();
     public static String capabilitiesJson();
-    // Method riêng cho parse/validate/render/transcode/create-key-image/print.
-    // Signature và DTO cụ thể được xác định trong Step 3.
+    // Method riêng theo operation; không dùng dispatcher chung.
+    // Step 12: downloadMetadata, downloadSeries, encodeVideo.
+    // Các method tương lai được xác định tại step tính năng cần dùng.
 }
 ```
 
-Đã chốt dùng các static method riêng cho từng operation, không dùng dispatcher execute(operation, request). Contract request/response phải có version độc lập với version dcm4che; signature/DTO là đầu ra thiết kế của Step 3.
+Đã chốt dùng các static method riêng cho từng operation, không dùng dispatcher execute(operation, request). Contract request/response có version độc lập với dcm4che; signature/DTO được xác định tại step đầu tiên sử dụng operation đó. Step 3 chỉ thiết lập lifecycle/version/capabilities nền tảng.
 
 Quy tắc:
 
@@ -342,7 +344,9 @@ Quy tắc:
 | Springdoc | Tích hợp OpenAPI của Summer-rs | Diff với OpenAPI baseline |
 | SLF4J/Logback | `tracing` phía Rust; SLF4J bridge phía JVM | Correlation ID xuyên JNI |
 | dcm4che | Giữ nguyên trên JVM | Không Native Image |
-| Orthanc/OpenCV/FFmpeg Java bindings | Giữ khi cần | Native dependency của Java vẫn phải đóng gói |
+| OpenCV/FFmpeg Java bindings | Giữ khi cần | Native dependency của Java vẫn phải đóng gói |
+
+Rust không dùng Orthanc transcode/native, khác Java.
 
 ## 5. Thiết kế Rust JNI adapter
 
@@ -358,14 +362,12 @@ rust/crates/
 
 Dùng crate `jni`/jni-rs; phiên bản và feature chính xác cần được kiểm tra, khóa trong Cargo.lock tại Step 3. Đoạn trait dưới đây minh họa ranh giới nghiệp vụ, chưa phải signature đã chốt cho byte/file và async dispatch.
 
-Chỉ `dicom-jvm` được thao tác `JNIEnv`, `JObject`, `JClass`, method signature và Java reference. Các module nghiệp vụ chỉ thấy interface an toàn:
+Chỉ `dicom-jvm` được thao tác `JNIEnv`, `JObject`, `JClass`, method signature và Java reference. Module nghiệp vụ dùng interface Rust an toàn; hiện thực Step 12 là `download_metadata`, `download_series`, `download_file` với `FileOperation::Video`. DICOM/JPEG đi qua HTTP/file của Rust, không có operation render/transcode. Trait dưới đây chỉ minh họa cho các tính năng tương lai, không phải danh sách operation đã triển khai:
 
 ```rust
 pub trait DicomEngine: Send + Sync {
     fn parse_json(&self, input: &[u8]) -> Result<Vec<u8>, DicomError>;
     fn validate(&self, input: &[u8]) -> Result<ValidationResult, DicomError>;
-    fn transcode(&self, request: TranscodeRequest) -> Result<Vec<u8>, DicomError>;
-    fn render_frame(&self, request: RenderRequest) -> Result<Vec<u8>, DicomError>;
     fn create_key_image(&self, request: KeyImageRequest) -> Result<Vec<u8>, DicomError>;
     fn print(&self, request: PrintRequest) -> Result<PrintResult, DicomError>;
 }
@@ -416,7 +418,7 @@ Yêu cầu:
 - Không lưu hoặc chia sẻ `JNIEnv` giữa các thread.
 - `JavaVM` handle có thể được chia sẻ theo API của binding; `JNIEnv` thì không.
 - Worker pool có queue bound và timeout.
-- Tách pool `print/DIMSE` khỏi pool `parse/render/transcode` nếu latency khác biệt lớn.
+- Tách pool `print/DIMSE` khỏi pool `metadata/video` nếu latency khác biệt lớn.
 - Không spawn một OS thread mới cho mỗi request.
 
 ### 5.4 Class, method và object reference
@@ -454,7 +456,7 @@ Ba cơ chế truyền dữ liệu:
 |---|---|---|
 | `byte[]` | Metadata hoặc DICOM nhỏ | Có copy Rust -> JVM và JVM -> Rust |
 | Direct `ByteBuffer` | Buffer lớn, cần giảm copy | Lifetime phải bảo đảm; Java không giữ buffer sau call |
-| File path | Study/series/transcode/video lớn | Canonicalize path và giới hạn sandbox directory |
+| File path | Dữ liệu file lớn, ví dụ video | Canonicalize path và giới hạn sandbox directory |
 
 Quy tắc:
 
@@ -513,7 +515,9 @@ Ownership, cleanup và trạng thái print chưa xác định kết quả tuân 
 
 ### 6.4 Native codec dependency
 
-Không build Native Image không có nghĩa là loại bỏ mọi native dependency. Nếu dcm4che ImageIO, OpenCV, Orthanc Transcode hoặc FFmpeg binding cần `.so`/`.dll`, các thư viện này vẫn phải:
+Không build Native Image
+không có nghĩa là loại bỏ mọi native dependency khác: dcm4che ImageIO, OpenCV hoặc
+FFmpeg binding còn cần `.so`/`.dll` thì các thư viện đó vẫn phải:
 
 - Được đóng gói theo OS/architecture.
 - Có `java.library.path` rõ ràng.
@@ -609,9 +613,9 @@ Kiểm tra tag, VR, multiplicity, UID, transfer syntax, frame metadata, decoded 
 - GC pause và throughput.
 - JNI queue depth/latency.
 - WADO streaming/backpressure.
-- Transcode/render/print concurrency.
+- Metadata/video/print concurrency; JPEG HTTP concurrency/backpressure.
 - Soak test và thread/reference/file descriptor/temp-file leak.
-- Graceful shutdown trong lúc có HTTP, WebSocket, transcode và print job.
+- Graceful shutdown trong lúc có HTTP, WebSocket, video và print job.
 
 ## 10. Memory và performance
 
@@ -754,9 +758,10 @@ Nguồn quyết định: người dùng xác nhận T1–T11 và T12–T13 trong
 | T8 | Giữ dependency Java hiện tại làm baseline; dcm4che 5.33.1 theo pom.xml nguồn |
 | T9 | Facade JAR + thư mục dependency JAR |
 | T10 | Crate jni/jni-rs; phiên bản cụ thể chưa khóa |
-| T11 | Method riêng cho parse, validate, render, transcode, create-key-image, print; không dispatcher chung |
+| T11 | Method riêng theo operation, không dispatcher chung. Step 12 hiện có downloadMetadata/downloadSeries/encodeVideo; Operation tương lai chỉ bổ sung tại step cần dùng. |
 | T12 | byte[] cho dữ liệu nhỏ, file path cho dữ liệu lớn; ngưỡng chưa chốt; chưa dùng direct buffer ban đầu |
 | T13 | Embedded JVM + restart process khi không phục hồi; đổi kiến trúc phải hỏi lại người dùng |
+| T14 | Giữ Java FFmpeg binding (JavaCV/FFmpegFrameRecorder) cho MP4 Step 12; Rust điều phối qua facade/JNI, không quản lý encoder bằng process FFmpeg riêng. Người dùng xác nhận 2026-10-27; chưa đồng nghĩa implementation/test đã đạt. |
 
 <a id="open-decisions"></a>
 
@@ -765,7 +770,6 @@ Nguồn quyết định: người dùng xác nhận T1–T11 và T12–T13 trong
 | ID | Nội dung | Step liên quan |
 |---|---|---|
 | T7 bổ sung | Vendor/build Java 25; JRE đầy đủ hay jlink | 3, 18 |
-| T14 | FFmpeg: giữ Java binding hay chuyển sang process do Rust quản lý | 12 |
 | Version | Phiên bản Rust toolchain/crates và feature tương thích, khóa Cargo.lock; không tự coi bản latest là đã chốt | 1–3 |
 | P1 | Số worker, dung lượng queue; print dùng pool riêng | 3, 17 |
 | P2 | RAM/container, JVM heap/direct memory và tổng RSS | 3, 18 |

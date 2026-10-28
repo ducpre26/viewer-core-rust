@@ -63,6 +63,7 @@ pub struct AppConfig {
     pub auth: AuthConfig,
     pub session: SessionConfig,
     pub jni: JvmSettings,
+    pub download: crate::api::DownloadSettings,
 }
 
 impl AppConfig {
@@ -87,6 +88,13 @@ impl AppConfig {
             auth,
             session,
             jni,
+            download: {
+                let settings = registry
+                    .get_config::<crate::api::DownloadSettings>()
+                    .map_err(|_| "Invalid [download] configuration")?;
+                settings.validate()?;
+                settings
+            },
         })
     }
 }

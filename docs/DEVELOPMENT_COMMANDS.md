@@ -92,7 +92,7 @@ hiện tại dùng `--maven-repo 'C:\Users\Admin\.m2\repository'`.
 - `build`: Maven clean/package, tạo thư mục dependency, kiểm tra hai method từ
   JAR thật và ghi manifest/checksum. Đây là kiểm tra packaging Java, chưa phải JNI.
 - `verify`: kiểm tra manifest, inventory/checksum JAR rồi chạy lại packaged smoke.
-- Artifact: `java/dicom-facade/target/distribution/`; dependency directory hiện rỗng.
+- Artifact: `java/dicom-facade/target/distribution/`; từ Step 12 chứa dependency DICOM/JavaCV/FFmpeg của baseline.
 - Log: `target/step-03-logs/`; mỗi lần chạy ghi đè log của công đoạn tương ứng.
 
 Theo dõi build trực tiếp từ terminal riêng:
@@ -151,3 +151,86 @@ Khi có module mới, bổ sung test tương ứng và kiểm tra xem các lện
 tiêu chí của step chưa. Nếu cần lệnh mới, báo người quản lý về mục đích và kết quả cần
 kiểm chứng để thống nhất bổ sung vào tài liệu này. Trước khi commit, báo kết quả và
 hỏi lại người dùng; chỉ commit sau khi được xác nhận.
+
+## 8. Download DICOM/JPEG/MP4 (Step 12)
+
+Mục đích của các lệnh mới: thu baseline download riêng, kiểm chứng codec/output
+độc lập và HTTP/ZIP/auth/lease; các lệnh proxy WADO không thay thế các kiểm tra này.
+
+```powershell
+# Baseline nguồn Java ở repo bên cạnh đã build; Windows local JDK hiện tại.
+python tools/baseline_download.py
+# Tái tạo golden MP4 từ Java gốc với input.dcm do DownloadSmoke sinh:
+python tools/baseline_download.py --mp4-directory '<codec output directory>'
+# Build facade như mục 5, sau đó:
+python tools/smoke_download.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot' --app
+# Công cụ độc lập, chỉ cài vào target; không sửa Python hệ thống:
+python -m pip install --target target/step-12-tools -r tools/download-test-requirements.txt
+python tools/smoke_download.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot' --app --independent
+# Theo yêu cầu 2026-10-28: lỗi store, hủy/deadline FFmpeg thật và thời điểm response.
+# Cần Postman CLI có simulation; imageio_ffmpeg ở target/step-12-tools.
+python tools/test_download_failures.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+```
+
+Runner lỗi dùng backend debug và facade production đã build, PostgreSQL từ TOML
+hiện tại, session chỉ trong cache. Tạo DICOM synthetic 384 frame 512×512 khoảng
+96 MiB và encode MP4 thật; không gọi PACS thật. Tự khởi động/dừng simulation trong
+`postman/simulations/download-failures.sim.yaml`, không lưu history lên dịch vụ.
+Các lỗi TCP chạy trực tiếp với listener của cùng mock vì gateway simulation
+không giữ nguyên tình huống socket bị cắt. Có kiểm tra file output bị truncate
+sau headers, chỉ tác động thư mục job của runner; không phải bài kiểm tra đĩa đầy.
+Log/MP4/results ở `target/step-12-error-logs/`; fixture ở
+`target/step-12-error-fixtures/`. `--transport-only` chỉ chạy phần lỗi HTTP, không
+được tính là pass cancellation/deadline FFmpeg. Tham số thử nghiệm không chốt P1–P4.
+
+`--app` dùng PostgreSQL theo TOML/profile hiện tại. Session chỉ tạo trong cache
+test, không insert session hoặc thay CONFIG; upstream là HTTP server localhost.
+HTTP suite dùng video double trong JAR dưới target, metadata chạy code thật;
+JPEG được phục vụ bằng ảnh synthetic hợp lệ tại endpoint rendered của store giả.
+Suite kiểm tra frame 1-based, single/multi-frame/ZIP, sai MIME/status/body/truncated,
+pixel/output quota và JPEG instance khi JNI tắt. Runner luôn
+chạy MP4 qua facade Java và qua Rust/JNI thật; `--independent` giải mã cả hai bằng
+FFmpeg riêng và so pixel. DICOM không transcode; JPEG lấy frame từ WADO-RS rendered
+với Accept image/jpeg và quality=90. Rust không dùng Orthanc transcode/native, khác Java.
+
+Log tại `target/step-12-logs/`: fixture, metadata/video, JNI video, HTTP contract,
+decoded-output JSON và peak RSS nếu cài psutil. Peak RSS chỉ là workload synthetic
+nhỏ được lấy mẫu mỗi 20 ms; chưa thay bài đo series lớn/production P2. Bộ kiểm tra
+queue/deadline/exception/reference và cancellation nằm trong lệnh `smoke_jni.py`
+ở mục 6, case `download`. Kiểm tra TTL/stream/ZIP quota nằm trong workspace tests.
+
+`config/download.example.toml` là section mẫu để ghép vào profile Summer đang dùng,
+không phải file loader mới. Khi bật download phải khai báo đủ giới hạn dương và
+thư mục tạm tuyệt đối đã tồn tại. JNI cần cho metadata study/series và MP4;
+DICOM/JPEG instance không cần JVM. Tham số mẫu chỉ dành cho test. File
+được chuẩn bị trước khi HTTP stream đọc từng chunk 64 KiB, không buffer toàn bộ
+output trong RAM. Xem các giới hạn parity tại [contract](baseline/step-12-contract.md).
+
+Nếu ổ chứa TEMP hệ thống thiếu dung lượng khi build/test, có thể đặt TEMP/TMP
+cho riêng tiến trình kiểm tra sang một thư mục target đã tạo trên ổ workspace.
+Đây là thư mục công cụ, không thay contract cấu hình DB/auth/session/JNI bằng TOML.
+
+
+### Kiểm chứng với Orthanc thật trong STORE.md
+
+Theo yêu cầu người dùng 2026-10-27, được phép truy vấn và lưu metadata cục bộ.
+Runner chỉ GET tới Orthanc; POST/DELETE session chỉ ở ứng dụng Rust thử nghiệm
+trên localhost. Không thay config ứng dụng đang dùng hoặc source repo Java gốc.
+
+```powershell
+python tools/verify_live_download.py --samples 3 --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+```
+
+Cần binary debug mới, công cụ độc lập ở `target/step-12-tools` và Postman CLI.
+Runner lấy URL/auth/study từ STORE.md, không hardcode credential trong source,
+không gửi sự kiện Postman lên API Catalog (`--no-report-events`). Metadata/media
+thật và kết quả chỉ lưu tại `target/step-12-logs/live-store/` đã gitignore.
+DICOM/JPEG instance chạy khi JNI tắt; nếu mẫu đã bao phủ toàn bộ một study có một
+series, `--java-home` kiểm tra thêm ZIP DICOM/JPEG study/series bằng metadata Java thật.
+DICOM và JPEG được so byte với nguồn; pydicom đọc file và Pillow
+đọc frame encapsulated JPEG Baseline khi transfer syntax tương ứng. JPEG server
+được giải mã riêng và output JPEG qua Rust được so byte/giải mã lại.
+Sai MIME của WADO-URI được ghi riêng; Rust dùng
+WADO-RS rendered, yêu cầu HTTP 200, Content-Type image/jpeg, SOI/EOI và kích thước
+JPEG trong hạn mức. Store phải hỗ trợ `/frames/{1-based}/rendered`; không fallback
+sang codec local hoặc trả PNG/DICOM dưới nhãn JPEG.
