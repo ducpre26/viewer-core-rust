@@ -1,0 +1,59 @@
+# Docker base configuration. Copy config.example to config; edit the prod overlay.
+[web]
+binding = "0.0.0.0"
+port = 8888
+global_prefix = "/ws/rest"
+graceful = true
+connect_info = true
+
+[web.openapi]
+doc_prefix = "/docs"
+
+[web.openapi.info]
+title = "Viewer Core Rust"
+version = "0.1.0"
+description = "Viewer Core Rust Docker test deployment"
+
+[logger]
+level = "info"
+format = "json"
+time_style = "utc"
+
+[session]
+default_expire_minutes = 60
+maximum_share_minutes = 129600
+path_prefix = "/viewer?session="
+public_domain = ""
+
+# Paths INSIDE the image; never point to Java installed on the Docker host.
+[jni]
+enabled = true
+java_home = "/opt/java/openjdk"
+facade_dir = "/app/facade"
+native_dir = "/app/native"
+temp_dir = "/var/lib/viewer/jni"
+# Test sizing only. NIO direct memory does not cap FFmpeg native allocations.
+xms_mb = 128
+xmx_mb = 512
+direct_mb = 128
+# Startup/control probe timeout, NOT the business download deadline.
+timeout_ms = 120000
+shutdown_ms = 30000
+check_jni = true
+
+# Test sizing only; a full production codec/resource assessment remains open.
+[download]
+enabled = true
+temp_dir = "/var/lib/viewer/download"
+max_jobs = 1
+timeout_ms = 120000
+max_input_bytes = 134217728
+max_output_bytes = 268435456
+max_job_bytes = 1073741824
+max_metadata_bytes = 8388608
+max_entries = 1000
+max_frames = 512
+max_pixels = 100000000
+video_fps = 10
+cleanup_ttl_seconds = 3600
+cleanup_interval_seconds = 60

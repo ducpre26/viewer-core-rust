@@ -1,0 +1,29 @@
+name: viewer-core-rust
+services:
+  viewer:
+    image: ${VIEWER_IMAGE:-viewer-core-rust:test}
+    platform: linux/amd64
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      SUMMER_ENV: prod
+    ports:
+      - "${VIEWER_LISTEN_ADDRESS:-127.0.0.1}:${VIEWER_HOST_PORT:-8888}:8888"
+    volumes:
+      - type: bind
+        source: ./config
+        target: /app/config
+        read_only: true
+        bind:
+          create_host_path: false
+      - viewer-data:/var/lib/viewer
+    cpus: 2.0
+    mem_limit: 4g
+    stop_grace_period: 180s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  viewer-data:

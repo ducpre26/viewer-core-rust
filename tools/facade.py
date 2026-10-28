@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -79,7 +80,13 @@ def main():
     parser.add_argument("action", choices=("build", "verify"))
     parser.add_argument("--java-home", type=Path, required=True, help="Explicit Java 25 JDK directory")
     parser.add_argument("--maven-repo", type=Path, help="Override Maven's local dependency cache")
+    parser.add_argument("--source-revision", help="Full Git commit for builds without .git")
+    parser.add_argument("--source-dirty", choices=("true", "false"), help="Working-tree state paired with --source-revision")
     args = parser.parse_args()
+    if (args.source_revision is None) != (args.source_dirty is None):
+        parser.error("--source-revision and --source-dirty must be supplied together")
+    if args.source_revision is not None and not re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", args.source_revision):
+        parser.error("--source-revision must be a full Git commit hash")
     java_home = args.java_home.resolve()
     suffix = ".exe" if os.name == "nt" else ""
     for name in ("java", "javac"):
@@ -105,8 +112,12 @@ def main():
         (DIST / "dependencies").mkdir(exist_ok=True)
         runtime = smoke(java_home, env)
         version = ET.parse(MODULE / "pom.xml").getroot().findtext("{http://maven.apache.org/POM/4.0.0}version")
-        revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-        dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
+        if args.source_revision is not None:
+            revision = args.source_revision.lower()
+            dirty = args.source_dirty == "true"
+        else:
+            revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+            dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
         manifest = {"schemaVersion": 1, "facadeVersion": version, "apiVersion": 1,
                     "capabilities": EXPECTED, "source": {"gitCommit": revision, "dirty": dirty},
                     "testedRuntime": runtime, "dcm4cheVersion": "5.33.1",

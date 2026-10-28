@@ -31,9 +31,9 @@ Kiểm tra toàn bộ tính năng Rust đã chuyển, đóng gói và xác nhậ
 
 ## Tiến độ
 
-- Trạng thái: `not_started`
-- Đã làm: Chưa triển khai.
-- Tiếp theo: Kiểm tra đầu vào theo [README](README.md), rồi bắt đầu checklist.
-- Vướng mắc: Chưa đánh giá.
-- Kiểm tra gần nhất: Chưa chạy.
-- Cập nhật: 2026-10-22 — rút gọn tài liệu, không đổi tiến độ.
+- Trạng thái: `in_progress` — chỉ phần đóng gói thử nghiệm theo yêu cầu ngày 2026-10-28; chưa bắt đầu full regression/hardening.
+- Đã làm: Lưu [plan Docker](../DOCKER_DEPLOYMENT_PLAN.md), Dockerfile nhiều stage, build scripts Windows/Linux, Compose và TOML mẫu riêng. Giữ user mặc định của image theo người dùng; chỉ mount config và data, Java/facade nằm trong image. Facade nhận Git metadata cho build không có .git.
+- Tiếp theo: Build image Linux amd64, kiểm chứng chính runtime image với DB/JNI/ZIP/MP4, volume và shutdown theo [runbook](../../deploy/docker/README.md); tiếp tục các mục chưa làm trong checklist trên khi được yêu cầu.
+- Vướng mắc: Máy hiện tại chưa có Docker CLI/engine; chưa có bằng chứng Docker build/runtime. Thông số mẫu chỉ cho test, P1–P4 production vẫn mở.
+- Kiểm tra gần nhất: `python tools/test_facade_metadata.py` đạt 3 test (explicit metadata không gọi Git, fallback local, từ chối metadata thiếu/sai); Python AST, TOML và Compose YAML parse đạt. PowerShell parser và Git Bash `bash -n` đạt; cả hai build script đã kiểm tra bằng Docker giả lập cho build/export, metadata, build lỗi và engine Windows. LF và `git diff --check` đạt. Đọc manifest công khai Docker Hub xác nhận Temurin 25 JDK Noble có linux/amd64 và ghim digest. Chưa chạy `docker compose config`, build image hay container thật; mock/parse không thay bằng chứng runtime.
+- Cập nhật: 2026-10-28 — đóng gói theo yêu cầu người dùng, chưa commit/push/deploy; các checkbox hoàn tất vẫn giữ mở.

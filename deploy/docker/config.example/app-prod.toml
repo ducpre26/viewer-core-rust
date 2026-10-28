@@ -1,0 +1,13 @@
+# Server-specific settings. The real config/ directory is gitignored.
+# The database must be reachable from the CONTAINER and dedicated to Rust.
+[database]
+url = "postgresql://REPLACE_WITH_DB_HOST:5432/viewer_rust"
+username = "REPLACE_WITH_DB_USER"
+password = "REPLACE_WITH_DB_PASSWORD"
+max_connections = 10
+timeout_seconds = 5
+
+[auth]
+client_security_disabled = false
+admin_username = "REPLACE_WITH_ADMIN_USERNAME"
+admin_password = "REPLACE_WITH_ADMIN_PASSWORD"

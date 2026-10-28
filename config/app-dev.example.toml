@@ -24,14 +24,14 @@ time_style = "utc"
 [database]
 url = "postgresql://127.0.0.1:5432/viewer_rust"
 username = "postgres"
-password = "REPLACE_WITH_LOCAL_DB_PASSWORD"
+password = "admin"
 max_connections = 10
 timeout_seconds = 5
 
 [auth]
 client_security_disabled = false
 admin_username = "sysadmin"
-admin_password = "REPLACE_WITH_LOCAL_ADMIN_PASSWORD"
+admin_password = "sysadmin"
 
 [session]
 default_expire_minutes = 60

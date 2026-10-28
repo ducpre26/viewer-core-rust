@@ -18,12 +18,17 @@ level = "${VIEWER_LOG_LEVEL:info}"
 format = "compact"
 time_style = "utc"
 
+
+[web.middlewares.logger]
+enable = true
+level = "info"
+
 # These sections use the same Summer TOML/profile registry as web and logger.
 # Environment values are optional, and only used through these placeholders.
 [database]
 url = "${VIEWER_DATABASE_URL:postgresql://127.0.0.1:5432/viewer_rust}"
 username = "${VIEWER_DATABASE_USER:postgres}"
-password = "${VIEWER_DATABASE_PASSWORD:REPLACE_WITH_LOCAL_DB_PASSWORD}"
+password = "${VIEWER_DATABASE_PASSWORD:admin}"
 max_connections = ${VIEWER_DATABASE_MAX_CONNECTIONS:10}
 timeout_seconds = ${VIEWER_DATABASE_TIMEOUT_SECONDS:5}
 

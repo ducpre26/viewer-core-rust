@@ -1,0 +1,20 @@
+# Allow only source inputs. Never send local credentials or test media to Docker.
+**
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates/
+!crates/**
+!java/
+!java/dicom-facade/
+!java/dicom-facade/pom.xml
+!java/dicom-facade/src/
+!java/dicom-facade/src/**
+!tools/
+!tools/facade.py
+!deploy/
+!deploy/docker/
+!deploy/docker/entrypoint.sh
+!Dockerfile
+**/target/**
+**/__pycache__/**

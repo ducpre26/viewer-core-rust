@@ -4,4 +4,8 @@
 *.log
 __pycache__/
 /config/app-dev.toml
+/deploy/docker/config/
+/deploy/docker/*.tar
+/deploy/docker/*.tar.gz
+/docs/STORE.md
 

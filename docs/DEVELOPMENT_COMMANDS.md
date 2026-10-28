@@ -1,5 +1,21 @@
 # Lệnh phát triển Viewer Core Rust
 
+## Docker thử nghiệm (Windows/Linux host → Linux amd64 image)
+
+Theo yêu cầu 2026-10-28, bổ sung các script đóng gói và kiểm tra Git metadata.
+Runbook và cấu hình volume: [deploy/docker](../deploy/docker/README.md).
+
+| Lệnh | Mục đích |
+|---|---|
+| `python tools/test_facade_metadata.py` | Kiểm tra truyền Git revision/dirty khi build không có .git và giữ fallback local; không chạy Maven/JVM. |
+| `.\scripts\build-docker.ps1 -Image viewer-core-rust:test` | Windows: build/load image linux/amd64 bằng Docker Desktop Linux engine. |
+| `bash scripts/build-docker.sh --image viewer-core-rust:test` | Linux: cùng build/load image qua Buildx. |
+| `docker compose -f deploy/docker/compose.yaml config --quiet` | Kiểm tra Compose bằng CLI thật, không chạy app. |
+
+Sau khi copy config.example thành config và điền DB/admin, chạy các lệnh
+up/health/readiness trong runbook. Các bài DB/JNI/codec phải chạy trên image
+thật trước khi xác nhận Docker runtime đạt; syntax/mock không thay kết quả đó.
+
 Chạy các lệnh dưới đây từ thư mục gốc repo `1pacs-viewer-core-rust`. Toolchain Rust
 được ghim trong `rust-toolchain.toml`; dependency được khóa trong `Cargo.lock`.
 

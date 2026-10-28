@@ -1,5 +1,9 @@
 # Viewer Core Rust
 
+[Build image trên Windows/Linux và deploy Docker](deploy/docker/README.md) —
+[plan đã chốt](docs/DOCKER_DEPLOYMENT_PLAN.md). Bộ Docker dành cho thử nghiệm;
+image/runtime Linux chưa được kiểm chứng trên máy phát triển hiện tại.
+
 [Hướng dẫn cấu trúc repo cho người mới học Rust](docs/REPOSITORY_GUIDE.md).
 
 [Các lệnh trong vòng đời phát triển](docs/DEVELOPMENT_COMMANDS.md) — chạy dev,
