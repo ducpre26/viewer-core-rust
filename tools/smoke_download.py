@@ -69,7 +69,7 @@ def fixture(root, java, env):
     file.write_text(source,encoding='utf-8')
     suffix = '.exe' if os.name=='nt' else ''
     cp = os.pathsep.join(map(str,[DIST/'pacs-dicom-facade.jar',*sorted((DIST/'dependencies').glob('*.jar'))]))
-    run([java/'bin'/f'javac{suffix}','-cp',cp,'-d',root/'classes',file,ROOT/'java/dicom-facade/src/main/java/vn/saolasoft/pacs/dicom/LimitedOutput.java'],env,'compile-codec-fixture.log')
+    run([java/'bin'/f'javac{suffix}','-cp',cp,'-d',root/'classes',file],env,'compile-codec-fixture.log')
     jar = root/'pacs-dicom-facade.jar'
     run([java/'bin'/f'jar{suffix}','--create','--file',jar,'-C',root/'classes','.'],env,'jar-codec-fixture.log')
     for dependency in (DIST/'dependencies').glob('*.jar'):
@@ -96,6 +96,8 @@ def main():
     print(f'Codec outputs: {outputs}; no Orthanc dependency',flush=True)
     (LOGS/'latest-codec-outputs.txt').write_text(str(outputs),encoding='utf-8')
     settings=smoke_jni.jni_settings(java)
+    # Large metadata regression crosses both JNI directions; size this test heap accordingly.
+    settings["xmx_mb"]=384
     config=LOGS/'jni-real.toml';config_fixture.write(config,settings)
     env['JNI_TEST_CONFIG']=str(config)
     env['JNI_DOWNLOAD_SOURCE']=str(outputs/'input.dcm')
@@ -120,7 +122,7 @@ def main():
     if args.app:
         with tempfile.TemporaryDirectory(prefix='download-fixture-',dir=ROOT/'target') as temporary:
             root=Path(temporary).resolve();fixture(root,java,env)
-            settings=smoke_jni.jni_settings(java);settings['facade_dir']=str(root)
+            settings=smoke_jni.jni_settings(java);settings["facade_dir"]=str(root)
             config=config_fixture.ROOT/'target/step-12-logs/jni-fixture.toml'
             config_fixture.write(config,settings);env['JNI_TEST_CONFIG']=str(config)
             run(['cargo','test','-p','viewer-app','--locked','postgres_download_contract','--','--ignored','--nocapture'],env,'http-download-contract.log')

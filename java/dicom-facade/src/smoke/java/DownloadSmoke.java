@@ -26,15 +26,13 @@ public class DownloadSmoke {
         Path root=Path.of(args[0]).toRealPath();
         Path source=root.resolve("input.dcm");dicom(source);
         String metadata="[{\"00080018\":{\"vr\":\"UI\",\"Value\":[\"1.2.3.4.5\"]},\"00280008\":{\"vr\":\"IS\",\"Value\":[2]}}]";
-        String mapped=DicomFacade.downloadMetadata(metadata,"","1",10);
+        String mapped=DicomFacade.downloadMetadata(metadata,"","1");
         if(!mapped.contains("undefined-undefined/undefined/1-undefined/1.2.3.4.5") || !mapped.contains("\"frames\":2")) throw new AssertionError(mapped);
-        if(!DicomFacade.downloadMetadata("bad","","1",10).equals("[]")) throw new AssertionError("malformed metadata");
-        if(!DicomFacade.downloadMetadata(metadata,"{not-a-tag}","1",10).contains("undefined-undefined")) throw new AssertionError("pattern fallback");
-        if(!DicomFacade.downloadMetadata(metadata,"custom/{00080018}","1",10).contains("custom/1.2.3.4.5")) throw new AssertionError("custom pattern");
-        try { DicomFacade.downloadMetadata(metadata,"","1",0);throw new AssertionError("metadata limit"); }
-        catch(IOException expected) {}
+        if(!DicomFacade.downloadMetadata("bad","","1").equals("[]")) throw new AssertionError("malformed metadata");
+        if(!DicomFacade.downloadMetadata(metadata,"{not-a-tag}","1").contains("undefined-undefined")) throw new AssertionError("pattern fallback");
+        if(!DicomFacade.downloadMetadata(metadata,"custom/{00080018}","1").contains("custom/1.2.3.4.5")) throw new AssertionError("custom pattern");
         Files.writeString(root.resolve("inputs.txt"),source+"\n");
-        DicomFacade.encodeVideo(root.resolve("inputs.txt").toString(),root.resolve("output.mp4").toString(),1,1024*1024,1024*1024,4096,10);
+        DicomFacade.encodeVideo(root.resolve("inputs.txt").toString(),root.resolve("output.mp4").toString(),1);
         int count=0;
         try(var grabber=new FFmpegFrameGrabber(root.resolve("output.mp4").toFile())) {
             grabber.start();
@@ -42,11 +40,11 @@ public class DownloadSmoke {
             while(grabber.grabImage()!=null) count++;
         }
         if(count!=2) throw new AssertionError("frame count "+count);
-        try { DicomFacade.encodeVideo(root.resolve("inputs.txt").toString(),root.resolve("limited.mp4").toString(),1,1024*1024,32,4096,10);throw new AssertionError("video output limit"); }
-        catch(Exception expected) {}
-        if(Files.exists(root.resolve("limited.mp4")) && Files.size(root.resolve("limited.mp4"))>32) throw new AssertionError("output exceeded limit");
-        try { DicomFacade.encodeVideo(root.resolve("inputs.txt").toString(),root.resolve("pixel-limit.mp4").toString(),1,1024*1024,1024*1024,1,10);throw new AssertionError("pixel limit"); }
+        try { DicomFacade.encodeVideo(root.resolve("inputs.txt").toString(),root.resolve("bad-fps.mp4").toString(),0);throw new AssertionError("invalid FPS"); }
         catch(IOException expected) {}
-        System.out.println("PASS metadata, limits and Java binding MP4 encode/decode; frames="+count);
+        // Metadata exceeds the removed 16 MiB bridge guard in both directions.
+        String large = "[{\"00080018\":{\"vr\":\"UI\",\"Value\":[\"" + "x".repeat(17*1024*1024) + "\"]}}]";
+        if(DicomFacade.downloadMetadata(large,"","1").length() <= 16*1024*1024) throw new AssertionError("large metadata");
+        System.out.println("PASS metadata and Java binding MP4 encode/decode; frames="+count);
     }
 }

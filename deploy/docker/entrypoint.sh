@@ -12,7 +12,7 @@ for file in /app/config/app.toml /app/config/app-prod.toml; do
         exit 1
     fi
 done
-for directory in /var/lib/viewer/jni /var/lib/viewer/download; do
+for directory in /var/lib/viewer/jni /var/lib/viewer/pacs-viewer-core-downloads; do
     mkdir -p "$directory"
     probe=$(mktemp "$directory/.write-check.XXXXXX")
     rm "$probe"

@@ -3,7 +3,7 @@
 mod config;
 mod download;
 pub use config::{JvmConfig, JvmSettings};
-pub use download::{FileLimits, FileOperation, FileRequest};
+pub use download::{FileOperation, FileRequest};
 
 use jni::{
     InitArgsBuilder, JNIEnv, JNIVersion, JavaVM,
@@ -83,7 +83,7 @@ pub struct Capabilities {
 }
 impl Capabilities {
     fn is_supported(&self) -> bool {
-        self.api_version == 1
+        self.api_version == 2
             && self.codecs.is_empty()
             && (self.operations.is_empty()
                 || self.operations == ["downloadMetadata", "downloadSeries", "encodeVideo"])
@@ -304,7 +304,7 @@ fn worker(
         if ready.send(Ok(())).is_err() {
             return Err(Error::WorkerStopped);
         }
-        eprintln!("JVM ready: Java 25; facade API 1; JNI worker attached");
+        eprintln!("JVM ready: Java 25; facade API 2; JNI worker attached");
         while let Some(command) = receiver.blocking_recv() {
             match command {
                 Command::Download(job) => download::execute(&mut env, &class, job, &running)?,
@@ -365,7 +365,7 @@ fn probe(env: &mut JNIEnv<'_>, class: &GlobalRef) -> Result<Capabilities, Error>
             env.call_static_method(class, "apiVersion", "()I", &[])
         })?
         .i()?;
-        if version != 1 {
+        if version != 2 {
             return Err(Error::Contract);
         }
         let value = invoke(env, |env| {

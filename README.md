@@ -25,7 +25,10 @@ Rust không dùng Orthanc transcode/native, khác Java.
 | MP4 | JavaCV/FFmpeg qua JVM/JNI theo T14. |
 
 DICOM/JPEG instance chạy được khi JNI tắt. Store phải hỗ trợ rendered-frame JPEG. Xem [contract download](docs/baseline/step-12-contract.md)
-và [cấu hình mẫu](config/download.example.toml).
+Không cần section `[download]`. Chỉ `[video].fps` tùy chọn, mặc định 1 như Java;
+`DOWNLOAD_PATH_FORMAT` vẫn ở bảng `config` và có fallback. File tạm dùng vùng
+riêng trong thư mục tạm hệ thống. Khi nâng cấp, bỏ `[download]` cũ và chuyển
+`download.video_fps` sang `[video].fps` nếu cần giữ FPS tùy chỉnh.
 
 ## Run
 
@@ -242,8 +245,10 @@ tables are needed in Step 02.
 
 JNI defaults to disabled. Dùng `jni.enabled=true` trong TOML và
 các khóa runtime/artifact/limit in [the adapter guide](crates/dicom-jvm/README.md).
-Build the Java 25 [facade](java/dicom-facade/README.md) first. It advertises API 1
-and empty operation/codec lists. The adapter pins jni-rs 0.21.1 with invocation,
+Build the Java 25 [facade](java/dicom-facade/README.md) first. It advertises API 2
+with downloadMetadata/downloadSeries/encodeVideo and an empty codec list.
+API 2 removes download quota arguments; deploy the rebuilt facade with the Rust binary.
+The adapter pins jni-rs 0.21.1 with invocation,
 validates the distribution/checksums, and runs synchronous JNI on a dedicated worker.
 
 Startup checks JVM/facade before HTTP. Readiness adds `jvm:up` or `jvm:down` when

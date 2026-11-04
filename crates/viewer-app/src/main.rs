@@ -41,7 +41,7 @@ async fn main() -> std::process::ExitCode {
         None => None,
     };
     let auth = Auth::new(database.clone(), config.auth);
-    let download = match api::DownloadRuntime::new(config.download, jvm.clone()) {
+    let download = match api::DownloadRuntime::new(config.video, jvm.clone()) {
         Ok(runtime) => runtime,
         Err(message) => {
             eprintln!("Download configuration error: {message}");
@@ -53,9 +53,7 @@ async fn main() -> std::process::ExitCode {
         }
     };
     let mut router = api::router(database.clone(), jvm.clone(), auth, config.session);
-    if let Some(download) = download {
-        router = router.layer(summer_web::axum::Extension(download));
-    }
+    router = router.layer(summer_web::axum::Extension(download));
     app.add_plugin(WebPlugin)
         .add_plugin(JobPlugin)
         .add_router(router);

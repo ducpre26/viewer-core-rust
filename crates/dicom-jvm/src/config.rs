@@ -178,7 +178,7 @@ fn verify_distribution(root: &Path) -> Result<String, Error> {
     }
     let manifest: Manifest = serde_json::from_slice(&bytes).map_err(|_| Error::Artifact)?;
     if manifest.schema_version != 1
-        || manifest.api_version != 1
+        || manifest.api_version != 2
         || manifest.facade_version != "0.1.0"
         || !manifest.capabilities.is_supported()
     {

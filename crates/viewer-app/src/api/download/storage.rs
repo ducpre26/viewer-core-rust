@@ -6,10 +6,9 @@ pub(super) struct Lease {
     // Fields drop in this order: close the lock before TempDir removes files on Windows.
     _lock: File,
     pub directory: tempfile::TempDir,
-    _permit: OwnedSemaphorePermit,
 }
 impl Lease {
-    pub fn new(root: &std::path::Path, permit: OwnedSemaphorePermit) -> std::io::Result<Self> {
+    pub fn new(root: &std::path::Path) -> std::io::Result<Self> {
         let directory = tempfile::Builder::new()
             .prefix("download-")
             .tempdir_in(root)?;
@@ -18,7 +17,6 @@ impl Lease {
         Ok(Self {
             _lock: lock,
             directory,
-            _permit: permit,
         })
     }
 }
@@ -29,20 +27,16 @@ impl Drop for Cleanup {
     }
 }
 impl Cleanup {
-    pub fn start(settings: Arc<DownloadSettings>) -> Self {
+    pub fn start(root: PathBuf) -> Self {
         Self(tokio::spawn(async move {
-            let mut timer =
-                tokio::time::interval(Duration::from_secs(settings.cleanup_interval_seconds));
+            // Internal orphan housekeeping, independent of request admission.
+            let mut timer = tokio::time::interval(Duration::from_secs(60));
             loop {
                 timer.tick().await;
-                let settings = settings.clone();
-                let result = tokio::task::spawn_blocking(move || {
-                    reap(
-                        &settings.temp_dir,
-                        Duration::from_secs(settings.cleanup_ttl_seconds),
-                    )
-                })
-                .await;
+                let root = root.clone();
+                let result =
+                    tokio::task::spawn_blocking(move || reap(&root, Duration::from_secs(300)))
+                        .await;
                 if !matches!(result, Ok(Ok(()))) {
                     tracing::warn!("Download temporary-file cleanup failed");
                 }
@@ -96,4 +90,26 @@ pub(super) fn reap(root: &std::path::Path, ttl: Duration) -> std::io::Result<()>
         }
     }
     Ok(())
+}
+
+/// Only this application's download directories are scanned by orphan cleanup.
+pub(super) fn root() -> std::io::Result<PathBuf> {
+    let root = std::env::temp_dir().join("pacs-viewer-core-downloads");
+    std::fs::create_dir_all(&root)?;
+    let metadata = std::fs::symlink_metadata(&root)?;
+    if !metadata.is_dir() || metadata.is_symlink() {
+        return Err(std::io::Error::other(
+            "Invalid download temporary directory",
+        ));
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return Err(std::io::Error::other(
+                "Invalid download temporary directory",
+            ));
+        }
+    }
+    std::fs::canonicalize(root)
 }

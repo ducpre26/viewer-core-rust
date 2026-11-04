@@ -51,3 +51,7 @@ enabled = false
 # timeout_ms = 5000
 # shutdown_ms = 1500
 # check_jni = true
+
+# Optional; default matches Java video.fps. No [download] section is required.
+# [video]
+# fps = 1

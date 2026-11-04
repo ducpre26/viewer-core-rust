@@ -15,7 +15,7 @@ không thuộc bộ triển khai này.
 | Cấu hình lúc build | Cấu hình lúc chạy |
 |---|---|
 | Platform, image tag, phiên bản toolchain/dependency, Git metadata | Compose: image, cổng, volume, CPU/RAM, restart |
-| Không đưa credential server vào image | TOML: DB/auth/session, JNI memory/timeout, download, logger |
+| Không đưa credential server vào image | TOML: DB/auth/session, JNI memory/timeout, video.fps, logger |
 
 Đổi source/dependency thì build image mới. Đổi cấu hình ứng dụng thì sửa TOML
 và restart; đổi Compose thì dùng compose up để áp dụng. Java/facade nằm sẵn
@@ -84,7 +84,8 @@ image, không copy secret vào Dockerfile/build args. File config thật trong r
 ## 3. Volume và JNI
 
 Compose dùng named volume `viewer-data` tại `/var/lib/viewer`. Entrypoint tạo
-`jni/` và `download/`, kiểm tra quyền ghi, rồi exec app. Không đặt user cố định;
+`jni/` và `pacs-viewer-core-downloads/`, kiểm tra quyền ghi, rồi exec app. Image đặt
+`TMPDIR=/var/lib/viewer` để vùng download tạm nằm trên volume. Không đặt user cố định;
 kế thừa user image nền. Không cần tạo UID/GID 10001 trên host.
 
 Muốn lưu ở đường dẫn host cụ thể, thay dòng volume dữ liệu bằng:
@@ -127,10 +128,11 @@ Có thể lưu ba biến VIEWER_IMAGE/VIEWER_LISTEN_ADDRESS/VIEWER_HOST_PORT tro
 `.env` cạnh Compose để dùng lại. Chúng điều khiển Docker, không thay TOML loader.
 DB/auth/JNI dùng TOML. Cổng nội bộ vẫn 8888 để healthcheck hoạt động.
 
-Mẫu thử nghiệm bật JNI/download, `check_jni=true`, container 2 CPU/4 GiB RAM.
+Mẫu thử nghiệm bật JNI, download luôn hoạt động, `check_jni=true`, container 2 CPU/4 GiB RAM.
 Xmx và direct memory không bao gồm toàn bộ Rust/JVM/FFmpeg native memory.
-`jni.timeout_ms` là startup/control probe; deadline xử lý download dùng
-`download.timeout_ms`. Hết deadline không buộc dừng FFmpeg đang chạy. Readiness
+`jni.timeout_ms` dùng chung cho startup/control probe và từng lời gọi JNI.
+Không còn section `[download]` hoặc deadline toàn request; `[video].fps` mặc định 1.
+Hết deadline JNI không buộc dừng FFmpeg đang chạy. Readiness
 có thể báo 503 khi worker quá deadline rồi hồi phục khi encode kết thúc.
 
 Healthcheck không tự restart container còn sống. `unless-stopped` xử lý process

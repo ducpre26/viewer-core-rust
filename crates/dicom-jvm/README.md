@@ -8,12 +8,13 @@ Step 12 bổ sung `download_metadata`, `download_series`, `download_file` với
 `FileOperation::Video`.
 Queue dùng chung có giới hạn 8,
 worker kiểm tra deadline trước khi thực thi và bỏ job có waiter đã đóng. HTTP
-timeout/disconnect không giải phóng owner của file/permit khi Java còn chạy.
+timeout/disconnect không giải phóng owner của file khi Java còn chạy.
 Mỗi operation dùng local frame; exception được clear trước khi đọc Throwable.
 Readiness dùng capabilities đã kiểm chứng khi worker bận, trả lỗi khi call đang
 chạy quá deadline; không tạo worker thay thế. JavaCPP cache nằm trong `jni.temp_dir`.
-Xem [contract download](../../docs/baseline/step-12-contract.md) và
-[cấu hình thử nghiệm](../../config/download.example.toml).
+Mỗi lời gọi dùng `jni.timeout_ms` chung; không có deadline download riêng.
+Facade API 2 bỏ các tham số quota trong chữ ký JNI: build/deploy distribution
+và binary Rust cùng phiên bản. Xem [contract download](../../docs/baseline/step-12-contract.md).
 
 Crate sở hữu một JVM cho mỗi process, sử dụng `jni = 0.21.1` với feature
 `invocation`. Phiên bản này được chọn theo API đã đối chiếu và kiểm thử trong

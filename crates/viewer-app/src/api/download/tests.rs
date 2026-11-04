@@ -10,26 +10,14 @@ use serde_json::Value;
 use summer_web::axum::{Router as HttpRouter, http::Request as HttpRequest};
 use tower::ServiceExt;
 
-fn settings(root: PathBuf) -> DownloadSettings {
-    DownloadSettings {
-        enabled: true,
-        temp_dir: root,
-        max_jobs: 1,
-        timeout_ms: 10_000,
-        max_input_bytes: 1024 * 1024,
-        max_output_bytes: 1024 * 1024,
-        max_job_bytes: 16 * 1024 * 1024,
-        max_metadata_bytes: 1024 * 1024,
-        max_entries: 100,
-        max_frames: 100,
-        max_pixels: 1024 * 1024,
-        video_fps: 1,
-        cleanup_ttl_seconds: 300,
-        cleanup_interval_seconds: 60,
-    }
+fn test_runtime(root: PathBuf, jvm: Option<Jvm>) -> DownloadRuntime {
+    let mut runtime = DownloadRuntime::new(VideoSettings::default(), jvm).unwrap();
+    runtime.temp_dir = root.clone();
+    runtime._cleanup = Arc::new(Cleanup::start(root));
+    runtime
 }
 #[test]
-fn admission_paths_limits_and_java_types() {
+fn paths_and_java_types() {
     for name in [
         "../x",
         "/x",
@@ -48,29 +36,11 @@ fn admission_paths_limits_and_java_types() {
     for value in ["", "OCTET_STREAM", "DICOM ", "pdf", "image/jpeg"] {
         assert!(kind(value, true).is_err());
     }
-    let temp = tempfile::tempdir().unwrap();
-    let mut config = settings(temp.path().to_owned());
-    assert!(config.validate().is_ok());
-    config.max_jobs = 0;
-    assert!(config.validate().is_err());
-    config.max_jobs = 1;
-    config.max_metadata_bytes = 17 * 1024 * 1024;
-    assert!(config.validate().is_err());
-    let file = std::fs::File::create(temp.path().join("quota")).unwrap();
-    let mut limited = LimitedFile { file, limit: 4 };
-    limited.write_all(&[1, 2, 3, 4]).unwrap();
-    assert!(limited.write_all(&[5]).is_err());
-    assert_eq!(
-        std::fs::metadata(temp.path().join("quota")).unwrap().len(),
-        4
-    );
 }
 #[tokio::test]
-async fn response_disconnect_releases_file_and_permit() {
-    let slots = Arc::new(Semaphore::new(1));
+async fn response_disconnect_releases_file() {
     let directory = tempfile::tempdir().unwrap();
-    let lease =
-        Arc::new(Lease::new(directory.path(), slots.clone().try_acquire_owned().unwrap()).unwrap());
+    let lease = Arc::new(Lease::new(directory.path()).unwrap());
     let root = lease.directory.path().to_owned();
     let path = root.join("output");
     std::fs::write(&path, vec![1u8; 256 * 1024]).unwrap();
@@ -78,7 +48,6 @@ async fn response_disconnect_releases_file_and_permit() {
         .await
         .unwrap();
     assert!(root.exists());
-    assert_eq!(slots.available_permits(), 0);
     let frame = response.body_mut().frame().await.unwrap().unwrap();
     assert_eq!(frame.data_ref().unwrap().len(), 65536);
     drop(response);
@@ -89,7 +58,6 @@ async fn response_disconnect_releases_file_and_permit() {
     })
     .await
     .unwrap();
-    assert_eq!(slots.available_permits(), 1);
 }
 fn model(store: &str) -> session::Model {
     session::Model {
@@ -190,9 +158,7 @@ async fn postgres_download_contract() {
         tokio::spawn(async move { summer_web::axum::serve(listener, store).await.unwrap() });
     auth.cache_session(model(&store_url)).await;
     let root = tempfile::tempdir().unwrap();
-    let runtime = DownloadRuntime::new(settings(root.path().to_owned()), Some(jvm.clone()))
-        .unwrap()
-        .unwrap();
+    let runtime = test_runtime(root.path().to_owned(), Some(jvm.clone()));
     let app: HttpRouter = crate::api::router(
         db.clone(),
         Some(jvm.clone()),
@@ -317,12 +283,8 @@ async fn postgres_download_contract() {
         response.into_body().collect().await.unwrap().to_bytes(),
         "fixture-mp4"
     );
-    // DICOM instance download must work with no JVM at all. Pixel/frame limits
-    // apply to codecs, not to an unchanged DICOM object.
-    let mut limits = settings(root.path().to_owned());
-    limits.max_frames = 1;
-    limits.max_pixels = 1;
-    let no_jvm = DownloadRuntime::new(limits, None).unwrap().unwrap();
+    // Instance downloads require no JNI and no download configuration.
+    let no_jvm = test_runtime(root.path().to_owned(), None);
     let no_jvm: HttpRouter = crate::api::router(
         db.clone(),
         None,
@@ -348,9 +310,7 @@ async fn postgres_download_contract() {
             .as_ref(),
         dicom.as_slice()
     );
-    let jpeg_runtime = DownloadRuntime::new(settings(root.path().to_owned()), None)
-        .unwrap()
-        .unwrap();
+    let jpeg_runtime = test_runtime(root.path().to_owned(), None);
     let jpeg_app: HttpRouter = crate::api::router(
         db.clone(),
         None,
@@ -360,6 +320,21 @@ async fn postgres_download_contract() {
     .layer(Extension(jpeg_runtime))
     .into();
     let jpeg_app = HttpRouter::new().nest("/ws/rest", jpeg_app);
+    for suffix in [
+        "?downloadType=dicom",
+        "/series/1.2.3.4?downloadType=jpeg",
+        "/series/1.2.3.4?downloadType=mp4",
+    ] {
+        let response = call(&jpeg_app, &format!("{base}{suffix}")).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body: Value =
+            serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
+                .unwrap();
+        assert_eq!(
+            body["message"],
+            "This download operation requires configured JNI"
+        );
+    }
     let before = requests.lock().unwrap().len();
     let response = call(
         &jpeg_app,
@@ -402,10 +377,6 @@ async fn postgres_download_contract() {
     )
     .await;
     assert_eq!(missing.status(), StatusCode::UNAUTHORIZED);
-    let held = runtime.slots.clone().try_acquire_owned().unwrap();
-    let full = call(&app, &format!("{base}?downloadType=dicom")).await;
-    assert_eq!(full.status(), StatusCode::SERVICE_UNAVAILABLE);
-    drop(held);
     frame_mode.store(3, std::sync::atomic::Ordering::SeqCst);
     let executing = app.clone();
     let path = format!("{base}/series/1.2.3.4?downloadType=mp4");
@@ -432,14 +403,9 @@ async fn postgres_download_contract() {
     .unwrap();
     running.abort();
     let _ = running.await;
-    assert_eq!(
-        runtime.slots.available_permits(),
-        0,
-        "Aborted request still owns native worker/file lease"
-    );
     assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
     tokio::time::timeout(Duration::from_secs(3), async {
-        while runtime.slots.available_permits() == 0 {
+        while std::fs::read_dir(root.path()).unwrap().count() != 0 {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     })
@@ -481,36 +447,6 @@ async fn postgres_download_contract() {
     assert_eq!(response.status(), StatusCode::OK);
     response.into_body().collect().await.unwrap();
     auth.cache_session(model(&store_url)).await;
-    for input_limit in [false, true] {
-        let mut limits = settings(root.path().to_owned());
-        if input_limit {
-            limits.max_input_bytes = 4;
-        } else {
-            limits.max_metadata_bytes = 4;
-        }
-        let limited = DownloadRuntime::new(limits, Some(jvm.clone()))
-            .unwrap()
-            .unwrap();
-        let limited: HttpRouter = crate::api::router(
-            db.clone(),
-            Some(jvm.clone()),
-            auth.clone(),
-            super::super::SessionConfig::default(),
-        )
-        .layer(Extension(limited))
-        .into();
-        let limited = HttpRouter::new().nest("/ws/rest", limited);
-        let response = call(
-            &limited,
-            &format!(
-                "{base}/series/1.2.3.4/instances/1.2.3.4.5?downloadType={}",
-                if input_limit { "dicom" } else { "jpeg" }
-            ),
-        )
-        .await;
-        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
-    }
     let unavailable = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = unavailable.local_addr().unwrap();
     drop(unavailable);
@@ -532,8 +468,7 @@ async fn postgres_download_contract() {
 #[test]
 fn ttl_cleanup_skips_active_lease_and_unowned_files() {
     let root = tempfile::tempdir().unwrap();
-    let slots = Arc::new(Semaphore::new(1));
-    let active = Lease::new(root.path(), slots.clone().try_acquire_owned().unwrap()).unwrap();
+    let active = Lease::new(root.path()).unwrap();
     let marker = std::fs::File::options()
         .write(true)
         .open(active.directory.path().join(".lease"))
@@ -556,13 +491,11 @@ fn ttl_cleanup_skips_active_lease_and_unowned_files() {
     assert!(active.directory.path().exists());
     assert!(!orphan.exists());
     assert!(unowned.exists());
-    assert_eq!(slots.available_permits(), 0);
     drop(active);
-    assert_eq!(slots.available_permits(), 1);
 }
 
 #[test]
-fn rendered_jpeg_frames_and_resource_checks() {
+fn rendered_jpeg_frames_and_validation() {
     let fixture: Value = serde_json::from_str(include_str!(
         "../../../../../docs/baseline/step-12-rendered-jpeg.json"
     ))
@@ -574,17 +507,16 @@ fn rendered_jpeg_frames_and_resource_checks() {
             .decode(value.as_str().unwrap())
             .unwrap();
         std::fs::write(&path, &bytes).unwrap();
-        assert!(verify_jpeg(&path, 256).is_ok());
-        assert!(verify_jpeg(&path, 255).is_err());
+        assert!(verify_jpeg(&path).is_ok());
         std::fs::write(&path, &bytes[..bytes.len() - 2]).unwrap();
-        assert!(verify_jpeg(&path, 256).is_err());
+        assert!(verify_jpeg(&path).is_err());
     }
     for bytes in [
         b"not-a-jpeg".as_slice(),
         &[0xff, 0xd8, 0xff, 0xe0, 0, 1, 0xff, 0xd9],
     ] {
         std::fs::write(&path, bytes).unwrap();
-        assert!(verify_jpeg(&path, 256).is_err());
+        assert!(verify_jpeg(&path).is_err());
     }
     assert_eq!(instance_frames(r#"[{}]"#).unwrap(), 1);
     assert_eq!(
@@ -605,4 +537,66 @@ fn rendered_jpeg_frames_and_resource_checks() {
         url.as_str(),
         "http://store.test/dicom/wado-rs/studies/study/series/series/instances/sop/frames/2/rendered?quality=90"
     );
+}
+
+#[test]
+fn zip64_options_cover_large_entries_without_large_allocation() {
+    // Inspect the actual ZIP64 local header selected by the production helper.
+    for (length, expected) in [
+        (1024, false),
+        (u32::MAX as u64, true),
+        (u32::MAX as u64 + 1, true),
+    ] {
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        writer.start_file("entry.dcm", zip_options(length)).unwrap();
+        writer.write_all(b"dicom").unwrap();
+        let bytes = writer.finish().unwrap().into_inner();
+        let local_size = u32::from_le_bytes(bytes[22..26].try_into().unwrap());
+        assert_eq!(local_size == u32::MAX, expected);
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        let mut output = Vec::new();
+        archive
+            .by_index(0)
+            .unwrap()
+            .read_to_end(&mut output)
+            .unwrap();
+        assert_eq!(output, b"dicom");
+    }
+}
+
+#[tokio::test]
+async fn transport_accepts_body_over_old_synthetic_limit() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let bytes = vec![42u8; 2 * 1024 * 1024];
+    let expected = bytes.clone();
+    let app = HttpRouter::new().route(
+        "/instance",
+        summer_web::axum::routing::get(move || async move { bytes }),
+    );
+    let server = tokio::spawn(async move { summer_web::axum::serve(listener, app).await.unwrap() });
+    let root = tempfile::tempdir().unwrap();
+    let runtime = test_runtime(root.path().to_owned(), None);
+    let lease = Arc::new(Lease::new(root.path()).unwrap());
+    let directory = lease.directory.path().to_owned();
+    let mut job = Job {
+        runtime,
+        lease,
+        sequence: 0,
+    };
+    let mut model = model(&format!("http://{address}"));
+    model.store_auth = None;
+    let session = crate::auth::CachedSession::from(model);
+    let result = job
+        .fetch(
+            format!("http://{address}/instance").parse().unwrap(),
+            &session,
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(std::fs::read(result).unwrap(), expected);
+    drop(job);
+    assert!(!directory.exists());
+    server.abort();
 }

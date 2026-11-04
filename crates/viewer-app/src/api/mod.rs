@@ -1,7 +1,7 @@
 //! HTTP infrastructure; business routes belong to their migration steps.
 mod admin;
 mod download;
-pub use download::{DownloadRuntime, DownloadSettings};
+pub use download::{DownloadRuntime, VideoSettings};
 mod client;
 pub use client::SessionConfig;
 mod config;

@@ -54,32 +54,37 @@ Các kết quả chính:
 
 Các giới hạn của bản triển khai:
 
-- Output được chuẩn bị trong thư mục job có giới hạn dung lượng trước khi luồng
+- Output được chuẩn bị trong thư mục job riêng trước khi luồng
   HTTP đọc file theo nhu cầu phía nhận, mỗi chunk 64 KiB. ZIP lưu dữ liệu không
   nén, trong khi Java mặc định dùng deflate. Tên và nội dung các mục khớp dữ liệu
   kiểm thử, nhưng cách nén, thời điểm gửi byte đầu tiên và thời điểm báo lỗi chưa
   giống hoàn toàn servlet streaming. Lỗi codec/nguồn dữ liệu trước khi Rust trả
   response được chuyển thành 500 với thông tin lỗi đã lược bỏ chi tiết nhạy cảm;
-  quá tải trả 503, quá deadline trả 504, vượt tổng hạn mức lưu trữ trả 413. Chưa
+  hàng đợi JNI đầy trả 503, lời gọi JNI quá deadline chung trả 504. Chưa
   kiểm chứng đầy đủ tính tương đương với servlet khi lỗi xảy ra sau khi response
   đã được gửi; các kết quả trên chưa chứng minh toàn bộ hành vi khớp baseline.
 - Từ chối đường dẫn ZIP không an toàn và tên mục trùng lặp. Rust tự sinh tên file
   trên hệ thống file; không dùng metadata bệnh nhân làm đường dẫn trên đĩa.
-- Job giữ khóa thư mục và suất xử lý đã cấp đến khi Java hoặc thao tác I/O chặn
+- Job giữ khóa thư mục đến khi Java hoặc thao tác I/O chặn
   hoàn tất, kể cả khi request bị hủy hoặc hết deadline. Tác vụ dọn file theo TTL
   bỏ qua thư mục đang khóa và chỉ xóa thư mục job thuộc ứng dụng đã quá hạn bên
-  trong thư mục gốc được cấu hình. Khi gửi xong body hoặc body bị hủy, thư mục
+  trong vùng `pacs-viewer-core-downloads` của thư mục tạm hệ thống. Khi gửi xong body hoặc body bị hủy, thư mục
   được dọn theo vòng đời tài nguyên sau khi không còn thao tác sử dụng.
 - DICOM/JPEG instance không cần JVM. JPEG instance đọc số
   frame từ DICOM JSON bằng Rust; study/series dùng Java parse metadata/tạo path.
-  File DICOM chịu hạn mức byte/storage, không chịu giới hạn pixel/frame của codec.
-  JPEG chịu giới hạn byte, frame và kích thước pixel từng frame; Rust kiểm tra
+  DICOM giữ nguyên byte, không có quota download bổ sung. Rust kiểm tra JPEG
   MIME, SOI/EOI và SOF trước khi trả file. Store phải hỗ trợ rendered-frame JPEG;
   không có fallback native hoặc đổi ảnh PNG thành nhãn JPEG.
-- Khi bật tính năng, phải khai báo cấu hình có kiểu dữ liệu rõ ràng trong
-  `[download]`. Tính năng mặc định tắt nếu không khai báo.
-  `config/download.example.toml` chứa giới hạn dành cho dữ liệu thử nghiệm,
-  không phải quyết định P1–P4 cho production. Không thêm bảng hoặc migration DB.
+- Download luôn hoạt động, không cần section `[download]`. Chỉ `[video].fps`
+  tùy chọn, mặc định 1; `DOWNLOAD_PATH_FORMAT` ở DB và fallback như Java.
+  Bỏ section cũ khi nâng cấp, chuyển `download.video_fps` sang `[video].fps`
+  nếu cần giữ FPS tùy chỉnh. Không thêm bảng hoặc migration DB.
+- Metadata Rust/JNI không còn guard 16 MiB hoặc quota số entry. ZIP chọn ZIP64
+  theo kích thước entry. Facade API 2 đổi chữ ký bỏ quota; triển khai distribution
+  cùng binary Rust. Distribution API 1 bị từ chối lúc khởi động.
+- Deadline chỉ áp dụng mỗi lời gọi JNI bằng `jni.timeout_ms` chung. Không có
+  deadline toàn request hoặc semaphore download riêng. DICOM/JPEG vẫn phục vụ
+  khi JNI worker đang encode/quá deadline; readiness phản ánh tình trạng JNI.
 
 Kiểm chứng native được thực hiện riêng: `DownloadSmoke` tạo DICOM giả lập gồm hai
 frame 16×16, kiểm tra mapping metadata, giá trị thay thế và giới hạn; encode MP4
@@ -118,7 +123,11 @@ frame; test giữ các tên ZIP cũ, từ chối sai MIME/status, dữ liệu gi
 bị cắt cụt. Fixture Java cũ chỉ còn là baseline route/header/naming; byte DICOM
 và JPEG expected theo hai quyết định mới của người dùng.
 
-## Thời điểm streaming và báo lỗi — kiểm chứng 2026-10-28
+## Thời điểm streaming và báo lỗi — bằng chứng lịch sử 2026-10-28
+
+Bảng dưới mô tả phiên bản trước khi bỏ quota. Download busy do max_jobs và
+deadline toàn request không còn là contract hiện hành. Kết quả refactor
+2026-11-03 được ghi tại Step 12; bằng chứng cũ không thay cho lần kiểm tra mới.
 
 Chốt hành vi Rust: tải toàn bộ nguồn, hoàn tất ZIP/MP4 và mở file output trước
 khi gửi HTTP headers. Sau đó đọc file theo chunk 64 KiB, có `Content-Length`

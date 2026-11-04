@@ -63,7 +63,7 @@ pub struct AppConfig {
     pub auth: AuthConfig,
     pub session: SessionConfig,
     pub jni: JvmSettings,
-    pub download: crate::api::DownloadSettings,
+    pub video: crate::api::VideoSettings,
 }
 
 impl AppConfig {
@@ -88,10 +88,10 @@ impl AppConfig {
             auth,
             session,
             jni,
-            download: {
+            video: {
                 let settings = registry
-                    .get_config::<crate::api::DownloadSettings>()
-                    .map_err(|_| "Invalid [download] configuration")?;
+                    .get_config::<crate::api::VideoSettings>()
+                    .map_err(|_| "Invalid [video] configuration")?;
                 settings.validate()?;
                 settings
             },

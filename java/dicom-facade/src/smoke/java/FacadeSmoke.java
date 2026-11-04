@@ -12,7 +12,7 @@ public final class FacadeSmoke {
         if (!loadedFrom.equals(Path.of(args[0]).toRealPath())) {
             throw new IllegalStateException("Facade was not loaded from the packaged JAR");
         }
-        if (DicomFacade.apiVersion() != 1) {
+        if (DicomFacade.apiVersion() != 2) {
             throw new IllegalStateException("Unexpected facade API version");
         }
         System.out.println(DicomFacade.capabilitiesJson());

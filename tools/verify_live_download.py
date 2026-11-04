@@ -109,21 +109,19 @@ def main():
     archives = []
     with tempfile.TemporaryDirectory(prefix='live-download-', dir=ROOT / 'target') as temporary:
         working = Path(temporary).resolve()
-        files = working / 'files'
-        files.mkdir()
+        system_temp = working / 'system-temp'
+        system_temp.mkdir()
+        files = system_temp / 'pacs-viewer-core-downloads'
         config = config_fixture.merge(configured(), {
             'web': {'binding': '127.0.0.1', 'port': port, 'middlewares': {'logger': {'enable': False}}},
             'auth': {'client_security_disabled': True}, 'jni': {'enabled': False},
             'logger': {'level': 'warn'},
-            'download': {'enabled': True, 'temp_dir': str(files), 'max_jobs': 1, 'timeout_ms': 60000,
-                'max_input_bytes': 128*1024*1024, 'max_output_bytes': 128*1024*1024,
-                'max_job_bytes': 256*1024*1024, 'max_metadata_bytes': 8*1024*1024,
-                'max_entries': 100, 'max_frames': 100, 'max_pixels': 4*1024*1024, 'video_fps': 1,
-                'cleanup_ttl_seconds': 300, 'cleanup_interval_seconds': 60},
+            'video': {'fps': 1},
         })
+        config.pop('download', None)
         config_fixture.write(working / 'config/app.toml', config)
         env = os.environ.copy()
-        env.update(SUMMER_ENV='dev', RUST_LOG='warn')
+        env.update(SUMMER_ENV='dev', RUST_LOG='warn', TEMP=str(system_temp), TMP=str(system_temp), TMPDIR=str(system_temp))
         options = {}
         if os.name == 'nt':
             import ctypes
@@ -230,7 +228,7 @@ def main():
                     stop(process)
                     process = None
                     env = smoke_jni.environment(args.java_home)
-                    env.update(SUMMER_ENV='dev', RUST_LOG='warn')
+                    env.update(SUMMER_ENV='dev', RUST_LOG='warn', TEMP=str(system_temp), TMP=str(system_temp), TMPDIR=str(system_temp))
                     config['jni'] = smoke_jni.jni_settings(args.java_home)
                     config_fixture.write(working / 'config/app.toml', config)
                     process = subprocess.Popen([str(binary)], cwd=working, env=env, stdout=log, stderr=log, **options)

@@ -99,25 +99,22 @@ def process_options():
 
 class App:
     def __init__(self, root, store, java, timeout_ms, frames):
-        self.files = root / 'files'
-        self.files.mkdir()
+        system_temp = root / 'system-temp'
+        system_temp.mkdir()
+        self.files = system_temp / 'pacs-viewer-core-downloads'
         self.base = f'http://127.0.0.1:{port()}/ws/rest'
         web_port = urllib.parse.urlsplit(self.base).port
         settings = smoke_jni.jni_settings(java)
-        settings.update(xmx_mb=384, shutdown_ms=10000)
+        settings.update(xmx_mb=384, shutdown_ms=10000, timeout_ms=timeout_ms)
         config = config_fixture.merge(configured(), {
             'web': {'binding': '127.0.0.1', 'port': web_port, 'middlewares': {'logger': {'enable': False}}},
             'auth': {'client_security_disabled': True}, 'logger': {'level': 'warn'}, 'jni': settings,
-            'download': {'enabled': True, 'temp_dir': str(self.files), 'max_jobs': 1,
-                'timeout_ms': timeout_ms, 'max_input_bytes': 256*1024*1024,
-                'max_output_bytes': 128*1024*1024, 'max_job_bytes': 512*1024*1024,
-                'max_metadata_bytes': 8*1024*1024, 'max_entries': 100,
-                'max_frames': frames+10, 'max_pixels': 512*512*(frames+10), 'video_fps': 10,
-                'cleanup_ttl_seconds': 1, 'cleanup_interval_seconds': 1},
+            'video': {'fps': 10},
         })
+        config.pop('download', None)
         config_fixture.write(root / 'config/app.toml', config)
         env = smoke_jni.environment(java)
-        env.update(SUMMER_ENV='dev', RUST_LOG='warn')
+        env.update(SUMMER_ENV='dev', RUST_LOG='warn', TEMP=str(system_temp), TMP=str(system_temp), TMPDIR=str(system_temp))
         self.log = (LOGS / f'app-{timeout_ms}.log').open('wb')
         binary = ROOT / 'target/debug' / ('viewer-app.exe' if os.name == 'nt' else 'viewer-app')
         self.process = subprocess.Popen([str(binary)], cwd=root, env=env,
@@ -151,7 +148,7 @@ class App:
         return f'{self.base}/v1/session/{self.session}/download/studies/1.2.3{suffix}?downloadType={kind}'
 
     def clean(self, timeout=45):
-        wait(lambda: not any(self.files.iterdir()), timeout, 'job files/permits not released')
+        wait(lambda: not any(self.files.iterdir()), timeout, 'job files not released')
 
     def close(self):
         for connection in CONNECTIONS:
@@ -262,11 +259,20 @@ def main():
             store = f'http://127.0.0.1:{direct}/dicom/wado-rs'
             app.set_store(store)
 
+            # The removed download deadline must not reject a slow valid store.
+            for name in ('headers-hang', 'body-hang'):
+                mode(name)
+                started = time.monotonic()
+                status, headers, body = request(app.url())
+                assert status == 200 and body == base64.b64decode(manifest['dicomBase64'])
+                assert any(key.lower() == 'content-disposition' for key in headers)
+                app.clean()
+                record(name+'-without-download-deadline', status=status, elapsedMs=round((time.monotonic()-started)*1000,2))
+
             cases = [(f'status-{code}', 'dicom', 'instance', 500) for code in [401,403,404,429,500,503]]
             cases += [(f'status-{code}', 'jpeg', 'instance', 500) for code in [401,403,429,503]]
             cases += [('html-502','dicom','instance',500), ('metadata-503','dicom','series',500),
                 ('body-truncated','dicom','instance',500), ('body-truncated','jpeg','instance',500),
-                ('headers-hang','dicom','instance',504), ('body-hang','dicom','instance',504),
                 ('second-instance-fails','dicom','series',500), ('second-frame-fails','jpeg','instance',500)]
             for name, kind, scope, expected in cases:
                 mode(name)
@@ -344,18 +350,15 @@ def run_native_and_committed_response_tests(store, mode, java, frames):
         job = output.parent
         abort(connection)
         assert job.exists(), 'native output deleted while encoding'
-        assert request(app.url())[0] == 503, 'native cancellation released permit early'
-        orphan = app.files/'download-orphan-control'
-        orphan.mkdir(); (orphan/'.lease').touch()
-        old = time.time()-60
-        os.utime(orphan/'.lease', (old,old))
-        os.utime(job/'.lease', (old,old))
-        wait(lambda: not orphan.exists(), 5, 'TTL reaper did not run')
-        assert job.exists(), 'TTL reaper deleted running native job'
+        # DICOM transport remains available while the separate JNI worker encodes.
+        mode('ok'); assert request(app.url())[0] == 200; mode('video')
+        # Lock/TTL cleanup is covered directly by workspace tests; the
+        # production housekeeping interval is no longer a test setting.
+        assert job.exists(), 'native job lost its lease'
         app.clean(90)
         assert request(app.base+'/ready')[0] == 200
         mode('ok'); assert request(app.url())[0] == 200; app.clean()
-        record('disconnect-during-real-encode', retainedUntilNativeCompletion=True, ttlSkippedActive=True)
+        record('disconnect-during-real-encode', retainedUntilNativeCompletion=True, dicomAvailableDuringEncode=True)
 
         mode('large-file')
         connection = connect(app.url(), small_window=True)
@@ -381,7 +384,7 @@ def run_native_and_committed_response_tests(store, mode, java, frames):
         response.close()
         app.clean()
         mode('ok'); assert request(app.url())[0] == 200; app.clean()
-        record('disconnect-during-response-stream', cleanup=True, permitRecovered=True)
+        record('disconnect-during-response-stream', cleanup=True, nextRequestSucceeded=True)
 
         mode('large-file')
         connection = connect(app.url(), small_window=True)
@@ -426,13 +429,13 @@ def run_native_and_committed_response_tests(store, mode, java, frames):
         assert json.loads(response.read())['status'] == 504
         connection.close()
         assert output.parent.exists(), 'deadline deleted active native resources'
-        assert request(app.url())[0] == 503
+        mode('ok'); assert request(app.url())[0] == 200
         assert request(app.base+'/ready')[0] == 503
         assert request(app.base+'/health')[0] == 200
         app.clean(90)
         assert request(app.base+'/ready')[0] == 200
         mode('ok'); assert request(app.url())[0] == 200; app.clean()
-        record('deadline-during-real-encode', status=504, busyStatus=503, readinessRecovered=True)
+        record('deadline-during-real-encode', status=504, dicomStatus=200, readinessRecovered=True)
     finally:
         if app is not None:
             app.close()

@@ -5,11 +5,15 @@ Thư viện Java 25 độc lập cho nền tảng Step 3 và download Step 12. A
 
 | Phương thức | Chữ ký JNI | Kết quả |
 |---|---|---|
-| `public static int apiVersion()` | `()I` | `1` |
-| `public static String capabilitiesJson()` | `()Ljava/lang/String;` | API 1; downloadMetadata/downloadSeries/encodeVideo; codecs chưa quảng bá |
-| `downloadMetadata(json, pattern, index, max)` | `(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)Ljava/lang/String;` | Metadata và path theo dcm4che AttributesFormat |
-| `downloadSeries(json, max)` | `(Ljava/lang/String;I)Ljava/lang/String;` | UID/index series theo baseline Java |
-| `encodeVideo(manifest, output, fps, inputLimit, outputLimit, pixels, frames)` | `(Ljava/lang/String;Ljava/lang/String;IJJJI)V` | JavaCV/FFmpeg MP4, xử lý từng frame |
+| `public static int apiVersion()` | `()I` | `2` |
+| `public static String capabilitiesJson()` | `()Ljava/lang/String;` | API 2; downloadMetadata/downloadSeries/encodeVideo; codecs chưa quảng bá |
+| `downloadMetadata(json, pattern, index)` | `(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;` | Metadata và path theo dcm4che AttributesFormat |
+| `downloadSeries(json)` | `(Ljava/lang/String;)Ljava/lang/String;` | UID/index series theo baseline Java |
+| `encodeVideo(manifest, output, fps)` | `(Ljava/lang/String;Ljava/lang/String;I)V` | JavaCV/FFmpeg MP4, xử lý từng frame |
+
+API 2 bỏ quota download và lớp LimitedOutput, không tương thích chữ ký API 1.
+Build/deploy distribution và binary Rust cùng nhau. Không còn guard metadata
+16 MiB; thư viện/JVM vẫn có giới hạn kiểu dữ liệu và bộ nhớ thực tế.
 
 Phiên bản API độc lập với phiên bản gói thư viện `0.1.0`. Step 12 dùng dcm4che
 5.33.1, JavaCV 1.5.9 và FFmpeg 6.0-1.5.9 theo baseline. Rust không dùng Orthanc transcode/native, khác Java. DICOM giữ

@@ -199,12 +199,17 @@ Log/MP4/results ở `target/step-12-error-logs/`; fixture ở
 `target/step-12-error-fixtures/`. `--transport-only` chỉ chạy phần lỗi HTTP, không
 được tính là pass cancellation/deadline FFmpeg. Tham số thử nghiệm không chốt P1–P4.
 
+Sau refactor 2026-11-03, store chậm headers/body vẫn trả 200 khi hoàn tất, không
+còn 504 do deadline download. Case 504 còn lại kiểm tra deadline JNI dùng chung.
+DICOM download vẫn hoạt động khi JNI bận/quá deadline. Runner không cấu hình
+quota/TTL; workspace tests kiểm tra trực tiếp cleanup bỏ qua file active.
+
 `--app` dùng PostgreSQL theo TOML/profile hiện tại. Session chỉ tạo trong cache
 test, không insert session hoặc thay CONFIG; upstream là HTTP server localhost.
 HTTP suite dùng video double trong JAR dưới target, metadata chạy code thật;
 JPEG được phục vụ bằng ảnh synthetic hợp lệ tại endpoint rendered của store giả.
 Suite kiểm tra frame 1-based, single/multi-frame/ZIP, sai MIME/status/body/truncated,
-pixel/output quota và JPEG instance khi JNI tắt. Runner luôn
+đầu vào sai định dạng và JPEG instance khi JNI tắt. Runner luôn
 chạy MP4 qua facade Java và qua Rust/JNI thật; `--independent` giải mã cả hai bằng
 FFmpeg riêng và so pixel. DICOM không transcode; JPEG lấy frame từ WADO-RS rendered
 với Accept image/jpeg và quality=90. Rust không dùng Orthanc transcode/native, khác Java.
@@ -213,12 +218,18 @@ Log tại `target/step-12-logs/`: fixture, metadata/video, JNI video, HTTP contr
 decoded-output JSON và peak RSS nếu cài psutil. Peak RSS chỉ là workload synthetic
 nhỏ được lấy mẫu mỗi 20 ms; chưa thay bài đo series lớn/production P2. Bộ kiểm tra
 queue/deadline/exception/reference và cancellation nằm trong lệnh `smoke_jni.py`
-ở mục 6, case `download`. Kiểm tra TTL/stream/ZIP quota nằm trong workspace tests.
+ở mục 6, case `download`. Kiểm tra TTL/stream/ZIP64 và transport vượt giới hạn
+synthetic cũ nằm trong workspace tests.
 
-`config/download.example.toml` là section mẫu để ghép vào profile Summer đang dùng,
-không phải file loader mới. Khi bật download phải khai báo đủ giới hạn dương và
-thư mục tạm tuyệt đối đã tồn tại. JNI cần cho metadata study/series và MP4;
-DICOM/JPEG instance không cần JVM. Tham số mẫu chỉ dành cho test. File
+Không cần section `[download]`; chỉ `[video].fps` tùy chọn, mặc định 1.
+`DOWNLOAD_PATH_FORMAT` vẫn ở DB, có fallback. Khi nâng cấp bỏ section cũ và
+chuyển `download.video_fps` sang `[video].fps` nếu cần giữ FPS tùy chỉnh.
+File tạm nằm trong vùng `pacs-viewer-core-downloads` của thư mục tạm hệ thống;
+lease/lock giữ file active; dọn file mồ côi là chi tiết nội bộ. Không có quota
+byte/job/frame/pixel/entry hoặc semaphore download. `jni.timeout_ms` dùng chung
+áp dụng từng lời gọi JNI, không phải deadline toàn request download.
+Facade API 2 thay chữ ký JNI: build/deploy distribution cùng binary Rust.
+JNI cần cho metadata study/series và MP4; DICOM/JPEG instance không cần JVM. File
 được chuẩn bị trước khi HTTP stream đọc từng chunk 64 KiB, không buffer toàn bộ
 output trong RAM. Xem các giới hạn parity tại [contract](baseline/step-12-contract.md).
 
@@ -248,5 +259,5 @@ DICOM và JPEG được so byte với nguồn; pydicom đọc file và Pillow
 được giải mã riêng và output JPEG qua Rust được so byte/giải mã lại.
 Sai MIME của WADO-URI được ghi riêng; Rust dùng
 WADO-RS rendered, yêu cầu HTTP 200, Content-Type image/jpeg, SOI/EOI và kích thước
-JPEG trong hạn mức. Store phải hỗ trợ `/frames/{1-based}/rendered`; không fallback
+JPEG hợp lệ. Store phải hỗ trợ `/frames/{1-based}/rendered`; không fallback
 sang codec local hoặc trả PNG/DICOM dưới nhãn JPEG.

@@ -67,7 +67,7 @@
                         <manifestEntries>
                             <Implementation-Title>${project.artifactId}</Implementation-Title>
                             <Implementation-Version>${project.version}</Implementation-Version>
-                            <Facade-Api-Version>1</Facade-Api-Version>
+                            <Facade-Api-Version>2</Facade-Api-Version>
                         </manifestEntries>
                     </archive>
                 </configuration>

@@ -38,6 +38,18 @@ Evidence: target/step-12-error-logs/results.json. No production store was used.
 
 ## What didn't work
 
+Refactor 2026-11-03: the runner no longer supplies `[download]`, download admission
+quotas or transport deadlines. Each JNI call uses the shared `jni.timeout_ms`.
+DICOM transport remains available during native encoding/overdue JNI work.
+System TEMP is isolated per child process; workspace tests cover orphan locks.
+The 2026-10-28 observations above are historical, not results for this revision.
+
+Current evidence: 26 selected checks passed on 2026-11-03 in
+`target/step-12-error-logs/results.json`, including slow headers/body returning
+200, upstream errors, real FFmpeg cancellation/deadline, DICOM transport staying
+available during encode/overdue JNI, and file cleanup after response disconnect.
+This does not establish full-disk, memory/soak, broad codec or Linux behavior.
+
 - First run exposed DICOM 401 being returned as a successful 200 attachment with
   the store JSON error. Production now requires source HTTP 200 for every fetch.
 - A simulation gateway turns an abruptly closed member body into a stalled

@@ -52,11 +52,11 @@ LABEL org.opencontainers.image.title="Viewer Core Rust" \
       org.opencontainers.image.revision="${SOURCE_REVISION}" \
       vn.saolasoft.source.dirty="${SOURCE_DIRTY}"
 WORKDIR /app
-ENV SUMMER_ENV=prod
+ENV SUMMER_ENV=prod TMPDIR=/var/lib/viewer
 COPY --from=rust-builder /build/target/release/viewer-app /app/viewer-app
 COPY --from=facade-builder /build/java/dicom-facade/target/distribution/ /app/facade/
 COPY --chmod=755 deploy/docker/entrypoint.sh /app/entrypoint.sh
-RUN mkdir -p /app/config /app/native /var/lib/viewer/jni /var/lib/viewer/download \
+RUN mkdir -p /app/config /app/native /var/lib/viewer/jni /var/lib/viewer/pacs-viewer-core-downloads \
     && ldd /app/viewer-app > /tmp/ldd.txt \
     && ! grep -q 'not found' /tmp/ldd.txt \
     && rm /tmp/ldd.txt

@@ -31,7 +31,7 @@ người dùng vẫn chạy script từ PowerShell.
 |---|---|
 | Build image | Platform linux/amd64, tag image, Rust/JDK/Maven, dependencies, Git revision/dirty |
 | Chạy container | Image tag, cổng publish, CPU/RAM, volume và restart policy trong Compose |
-| Khởi động ứng dụng | DB/auth/session/logging, JNI memory/timeout và giới hạn download trong TOML |
+| Khởi động ứng dụng | DB/auth/session/logging, JNI memory/timeout và video.fps tùy chọn trong TOML |
 
 Không đưa credential hoặc địa chỉ DB/DICOM Store thật vào image/build args.
 Đổi source/dependency cần build image mới. Đổi TOML thì restart app; đổi
@@ -61,7 +61,7 @@ downloads chưa snapshot toàn bộ, nên không tuyên bố build byte-for-byte
 | `/app/native` | Thư mục có sẵn trong image cho java.library.path |
 | `/app/config` | Bind mount config/app.toml + app-prod.toml, chỉ đọc |
 | `/var/lib/viewer/jni` | Volume ghi được; JavaCPP cache tại jni/javacpp |
-| `/var/lib/viewer/download` | Cùng volume, file download tạm |
+| `/var/lib/viewer/pacs-viewer-core-downloads` | Cùng volume, vùng download dưới TEMP hệ thống của container |
 
 Không mount đè Java/facade/native. Không khai báo libjvm_path khi đã dùng
 java_home. Entrypoint tạo thư mục con trên volume, kiểm tra ghi được và exec
@@ -72,15 +72,15 @@ app luôn nghe 0.0.0.0:8888 trong container. SUMMER_ENV=prod, credential ở fil
 TOML server, restart unless-stopped, JSON log xoay vòng 10 MiB x 3.
 
 Thông số thử nghiệm: 2 CPU/4 GiB container; JVM Xms=128 MiB, Xmx=512 MiB,
-direct=128 MiB, check_jni=true. Một download; input 128 MiB, output 256 MiB,
-job 1 GiB, metadata 8 MiB, 1.000 entry, 512 frame, 100 triệu pixel, 10 FPS.
-Download deadline 120 giây; JNI startup/probe 120 giây; shutdown JVM 30 giây;
-Docker stop grace 180 giây. Cleanup TTL 1 giờ, interval 60 giây.
+direct=128 MiB, check_jni=true. Video FPS mặc định 1. JNI startup/probe/operation
+120 giây; shutdown JVM 30 giây; Docker stop grace 180 giây.
 
-Xmx/direct không giới hạn toàn bộ native FFmpeg/Rust memory. Job limit không
-phải quota vật lý ổ đĩa. JNI timeout không hủy native encode; deadline download
-có thể hết trong khi worker vẫn giữ file/permit tới completion. HTTP drain
-có thể vượt stop grace khi client chậm. Thông số này chưa chốt P1–P4 production.
+Theo sửa Step 12 ngày 2026-11-03, không còn section `[download]`, quota hoặc
+deadline HTTP riêng. Image đặt TMPDIR=/var/lib/viewer; thư mục download riêng,
+lease/lock và cleanup được ứng dụng quản lý nội bộ. Xmx/direct không giới hạn
+toàn bộ native FFmpeg/Rust memory. JNI timeout không hủy native encode; worker
+vẫn giữ file tới completion. HTTP drain có thể vượt stop grace khi client chậm.
+Chưa có kiểm chứng Docker runtime mới; sizing JNI/container vẫn là mẫu thử nghiệm.
 
 ## Kiểm chứng và bàn giao
 

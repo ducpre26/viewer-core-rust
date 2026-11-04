@@ -192,7 +192,7 @@ Khi JNI bật, các khóa nằm trong cùng section `[jni]`:
 | `facade_dir` | Distribution JAR/dependencies/manifest/checksum hợp lệ. |
 | `temp_dir`, `native_dir` | Thư mục đã tồn tại, path tương đối theo cwd. |
 | `xms_mb`, `xmx_mb`, `direct_mb` | Số nguyên dương khi bật; Xms ≤ Xmx; không chốt sizing production P1–P4. |
-| `timeout_ms`, `shutdown_ms` | Số nguyên dương khi bật; giữ lifecycle/fatal recovery. |
+| `timeout_ms`, `shutdown_ms` | Số nguyên dương khi bật; timeout dùng chung cho startup/probe và từng lời gọi JNI; giữ lifecycle/fatal recovery. |
 | `check_jni` | Boolean tùy chọn; default debug=true, release=false; test đặt true. |
 
 Các khóa JNI có ví dụ comment trong file mẫu. Adapter nhận `JvmSettings` từ
@@ -464,7 +464,10 @@ Quy tắc:
 - Đã chốt T12: bắt đầu bằng `byte[]` cho dữ liệu nhỏ và file path cho dữ liệu lớn; ngưỡng chưa chốt (P3). Direct buffer chưa triển khai ban đầu; chỉ xem xét sau benchmark chứng minh cần thiết.
 - Không giữ `GetPrimitiveArrayCritical` qua I/O hoặc call kéo dài.
 - Không base64 DICOM/pixel data trong JSON.
-- File operation dùng thư mục tạm riêng, quota, TTL và cleanup.
+- Download dùng thư mục tạm hệ thống/vùng riêng, lease/lock và cleanup nội bộ.
+  Không có section `[download]`, quota download hay guard metadata 16 MiB.
+  `[video].fps` mặc định 1; `DOWNLOAD_PATH_FORMAT` giữ ở DB. Facade API 2 bỏ
+  tham số quota; JNI dùng timeout/queue chung, không có deadline HTTP riêng.
 
 <a id="jni-ownership"></a>
 

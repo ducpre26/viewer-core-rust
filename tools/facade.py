@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "java" / "dicom-facade"
 DIST = MODULE / "target" / "distribution"
 LOGS = ROOT / "target" / "step-03-logs"
-EXPECTED = {"apiVersion": 1, "operations": ["downloadMetadata", "downloadSeries", "encodeVideo"], "codecs": []}
+EXPECTED = {"apiVersion": 2, "operations": ["downloadMetadata", "downloadSeries", "encodeVideo"], "codecs": []}
 
 
 def run(command, env, log, timeout=120):
@@ -54,10 +54,10 @@ def smoke(java_home, env):
                 raise RuntimeError("Orthanc classes/native library found in the facade distribution")
     with zipfile.ZipFile(jar) as archive:
         classes = {name for name in archive.namelist() if name.endswith(".class")}
-        if classes != {"vn/saolasoft/pacs/dicom/DicomFacade.class", "vn/saolasoft/pacs/dicom/LimitedOutput.class"}:
+        if classes != {"vn/saolasoft/pacs/dicom/DicomFacade.class"}:
             raise RuntimeError("Unexpected classes in facade JAR")
         manifest = archive.read("META-INF/MANIFEST.MF").decode("utf-8")
-        if "Facade-Api-Version: 1" not in manifest.splitlines():
+        if "Facade-Api-Version: 2" not in manifest.splitlines():
             raise RuntimeError("JAR manifest API version mismatch")
     classpath = os.pathsep.join(str(p) for p in [jar, *sorted((DIST / "dependencies").glob("*.jar"))])
     suffix = ".exe" if os.name == "nt" else ""
@@ -118,19 +118,19 @@ def main():
         else:
             revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
             dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
-        manifest = {"schemaVersion": 1, "facadeVersion": version, "apiVersion": 1,
+        manifest = {"schemaVersion": 1, "facadeVersion": version, "apiVersion": 2,
                     "capabilities": EXPECTED, "source": {"gitCommit": revision, "dirty": dirty},
                     "testedRuntime": runtime, "dcm4cheVersion": "5.33.1",
                     "artifacts": artifact_hashes()}
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     else:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest["schemaVersion"] != 1 or manifest["apiVersion"] != 1 or manifest["capabilities"] != EXPECTED:
+        if manifest["schemaVersion"] != 1 or manifest["apiVersion"] != 2 or manifest["capabilities"] != EXPECTED:
             raise RuntimeError("Distribution manifest contract mismatch")
         if manifest["artifacts"] != artifact_hashes():
             raise RuntimeError("Distribution JAR checksum/inventory mismatch")
         runtime = smoke(java_home, env)
-    print(f"PASS: packaged facade API 1, download operations; native codecs require corpus verification; runtime {runtime}")
+    print(f"PASS: packaged facade API 2, download operations; native codecs require corpus verification; runtime {runtime}")
     print(f"Distribution: {DIST}")
 
 

@@ -25,16 +25,16 @@ public final class DicomFacade {
         if (MODE.equals("throw-probe") && calls > 1) {
             throw new IllegalStateException("PRIVATE_PATIENT_TOKEN /sensitive/path password=secret");
         }
-        return MODE.equals("version") ? 2 : 1;
+        return MODE.equals("version") ? 1 : 2;
     }
 
     public static String capabilitiesJson() {
         return switch (MODE) {
             case "json" -> "{invalid";
-            case "capabilities" -> "{\"apiVersion\":1,\"operations\":[\"print\"],\"codecs\":[]}";
+            case "capabilities" -> "{\"apiVersion\":2,\"operations\":[\"print\"],\"codecs\":[]}";
             case "null" -> null;
             case "large" -> "x".repeat(4097);
-            default -> "{\"apiVersion\":1,\"operations\":[],\"codecs\":[]}";
+            default -> "{\"apiVersion\":2,\"operations\":[],\"codecs\":[]}";
         };
     }
 
@@ -43,9 +43,9 @@ public final class DicomFacade {
         throw new IllegalArgumentException("PRIVATE_PATIENT_TOKEN /sensitive/path password=secret");
     }
 
-    public static String downloadSeries(String json,int max) { return "[]"; }
-    public static String downloadMetadata(String json,String pattern,String index,int max) { return "[]"; }
-    public static void encodeVideo(String source,String destination,int fps,long input,long output,long pixels,int frames) throws Exception {
+    public static String downloadSeries(String json) { return "[]"; }
+    public static String downloadMetadata(String json,String pattern,String index) { return "[]"; }
+    public static void encodeVideo(String source,String destination,int fps) throws Exception {
         String text=java.nio.file.Files.readString(java.nio.file.Path.of(source));
         if(!text.equals("slow") && !text.equals("throw") && !text.isEmpty()) {
             String first=text.lines().findFirst().orElse("");
