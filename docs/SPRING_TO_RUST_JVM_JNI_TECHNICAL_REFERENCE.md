@@ -91,7 +91,7 @@ Source code Spring hiện tại là nguồn đối chiếu kỹ thuật và hàn
 | UC-003 | Tra cứu study DICOM | `SESSION` | Không bắt buộc; dùng HTTP QIDO-RS |
 | UC-004 | Truy xuất dữ liệu ảnh DICOM | `SESSION` | Chỉ dùng khi cần parse/normalize DICOM JSON; proxy streaming do Rust |
 | UC-005 | Tải nội dung DICOM | `SESSION`, `CONFIG` | DICOM nguyên byte, JPEG lấy từ WADO-RS rendered bằng Rust; Java chỉ metadata/video. Không dùng Orthanc transcode/native, khác Java |
-| UC-006 | Tiếp nhận và xuất key image | `SESSION`, `STUDY_KEY_IMAGE`, `CONFIG` | Validate/tạo/ghi DICOM qua Java facade |
+| UC-006 | Tiếp nhận và xuất key image | `SESSION`, `STUDY_KEY_IMAGE`, file; settings qua typed TOML, luồng Java không đọc `CONFIG` | Parse/bổ sung/validate/ghi DICOM qua facade; pending được cập nhật trước khi ghi theo [contract Step 13](step/step-13-key-image.md#contract-java-làm-chuẩn) |
 | UC-007 | Quản lý phiên dựng hình 3D | `SESSION`; phiên 3D là runtime registry | Không cho orchestration; DICOM engine chỉ dùng gián tiếp nếu cần tiền xử lý |
 | UC-008 | Quản lý cấu hình Viewer | `CONFIG` | Không |
 | UC-009 | Quản trị client và quyền | `CLIENT`, `PERMISSION`, `CLIENT_PERMISSION` | Không |
@@ -296,7 +296,7 @@ cần sử dụng, ví dụ:
 
 - `parseToJson(byte[])`
 - `validate(byte[])`
-- `createKeyImage(request)`
+- `createKeyImage(request)` — tên minh họa; Step 13 phải tách ranh giới xử lý theo thứ tự Java: parse/validation nghiệp vụ, cập nhật pending ở Rust, rồi bổ sung/ghi DICOM; chưa chốt signature tạo trọn batch.
 - `print(PrintRequest)`
 - Các operation DIMSE khác chỉ khi repo thực sự sử dụng.
 
@@ -362,7 +362,7 @@ rust/crates/
 
 Dùng crate `jni`/jni-rs; phiên bản và feature chính xác cần được kiểm tra, khóa trong Cargo.lock tại Step 3. Đoạn trait dưới đây minh họa ranh giới nghiệp vụ, chưa phải signature đã chốt cho byte/file và async dispatch.
 
-Chỉ `dicom-jvm` được thao tác `JNIEnv`, `JObject`, `JClass`, method signature và Java reference. Module nghiệp vụ dùng interface Rust an toàn; hiện thực Step 12 là `download_metadata`, `download_series`, `download_file` với `FileOperation::Video`. DICOM/JPEG đi qua HTTP/file của Rust, không có operation render/transcode. Trait dưới đây chỉ minh họa cho các tính năng tương lai, không phải danh sách operation đã triển khai:
+Chỉ `dicom-jvm` được thao tác `JNIEnv`, `JObject`, `JClass`, method signature và Java reference. Module nghiệp vụ dùng interface Rust an toàn; hiện thực Step 12 là `download_metadata`, `download_series`, `download_file` với `FileOperation::Video`. DICOM/JPEG đi qua HTTP/file của Rust, không có operation render/transcode. Trait dưới đây chỉ minh họa cho các tính năng tương lai, không phải danh sách operation đã triển khai. Riêng `create_key_image` không quy định ingest nguyên lô hay kết quả luôn nằm trong `Vec<u8>`; signature byte/file và orchestration phải theo contract Java tại Step 13:
 
 ```rust
 pub trait DicomEngine: Send + Sync {
