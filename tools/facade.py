@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "java" / "dicom-facade"
 DIST = MODULE / "target" / "distribution"
 LOGS = ROOT / "target" / "step-03-logs"
-EXPECTED = {"apiVersion": 2, "operations": ["downloadMetadata", "downloadSeries", "encodeVideo"], "codecs": []}
+EXPECTED = {"apiVersion": 2, "operations": ["downloadMetadata", "downloadSeries", "encodeVideo", "keyImage"], "codecs": []}
 
 
 def run(command, env, log, timeout=120):
@@ -54,7 +54,7 @@ def smoke(java_home, env):
                 raise RuntimeError("Orthanc classes/native library found in the facade distribution")
     with zipfile.ZipFile(jar) as archive:
         classes = {name for name in archive.namelist() if name.endswith(".class")}
-        if classes != {"vn/saolasoft/pacs/dicom/DicomFacade.class"}:
+        if "vn/saolasoft/pacs/dicom/DicomFacade.class" not in classes or any(not (name == "vn/saolasoft/pacs/dicom/DicomFacade.class" or name.startswith("vn/saolasoft/pacs/dicom/keyimage/")) for name in classes):
             raise RuntimeError("Unexpected classes in facade JAR")
         manifest = archive.read("META-INF/MANIFEST.MF").decode("utf-8")
         if "Facade-Api-Version: 2" not in manifest.splitlines():
@@ -130,7 +130,7 @@ def main():
         if manifest["artifacts"] != artifact_hashes():
             raise RuntimeError("Distribution JAR checksum/inventory mismatch")
         runtime = smoke(java_home, env)
-    print(f"PASS: packaged facade API 2, download operations; native codecs require corpus verification; runtime {runtime}")
+    print(f"PASS: packaged facade API 2, download/key-image operations; native codecs require corpus verification; runtime {runtime}")
     print(f"Distribution: {DIST}")
 
 

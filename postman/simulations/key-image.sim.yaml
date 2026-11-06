@@ -1,0 +1,6 @@
+simulation: key-image
+routing: path
+mocks:
+  - name: key-image-store
+    routeKey: store
+    path: postman/mocks/key-image-store/config.yaml

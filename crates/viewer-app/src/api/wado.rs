@@ -1,5 +1,4 @@
-//! UC-004: opaque WADO proxy. Local key images and session metadata prefetch
-//! are deferred by the Step 11 scope decision; no DICOM parsing or JNI here.
+//! UC-004 streaming proxy, with Java-compatible local key image branches added in Step 13.
 use crate::auth::Auth;
 use futures_util::TryStreamExt;
 use std::{collections::BTreeMap, time::Duration};
@@ -134,6 +133,22 @@ async fn retrieve(
         Ok(Some(session)) if session.studies.contains(&Some(study.clone())) => session,
         _ => return failure(),
     };
+    let key_image = request
+        .extensions()
+        .get::<super::KeyImageRuntime>()
+        .cloned();
+    if !operation.uri
+        && operation.suffix == "/series/{seriesUID}/instances/{objectUID}/frames/{frames}"
+        && let Some(runtime) = &key_image
+    {
+        match super::key_image::frame(runtime, study, &params["seriesUID"], &params["objectUID"])
+            .await
+        {
+            Ok(Some(response)) => return response,
+            Ok(None) => {}
+            Err(_) => return failure(),
+        }
+    }
     let Some(url) = session
         .store_url
         .as_deref()
@@ -180,6 +195,65 @@ async fn retrieve(
     let Ok(upstream) = upstream.send().await else {
         return failure();
     };
+    if !operation.uri
+        && matches!(operation.suffix, "/series" | "/series/{seriesUID}/metadata")
+        && let Some(runtime) = &key_image
+        && super::key_image::has_pending(runtime, study).await
+    {
+        let status = upstream.status();
+        let content_type = upstream.headers().get(header::CONTENT_TYPE).cloned();
+        let Ok(bytes) = upstream.bytes().await else {
+            return failure();
+        };
+        let uri = request
+            .extensions()
+            .get::<summer_web::axum::extract::OriginalUri>()
+            .map(|v| &v.0)
+            .unwrap_or(request.uri());
+        let host = request
+            .headers()
+            .get(header::HOST)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or("localhost");
+        let retrieve = format!(
+            "{}://{host}{}",
+            uri.scheme_str().unwrap_or("http"),
+            uri.path()
+        );
+        let series = if operation.suffix == "/series" {
+            None
+        } else {
+            Some(params["seriesUID"].as_str())
+        };
+        return match super::key_image::merge(runtime, study, series, &retrieve, &bytes).await {
+            Ok(Some(value)) => {
+                let status = if series.is_some() {
+                    StatusCode::OK
+                } else {
+                    status
+                };
+                let mut response = (status, value.to_string()).into_response();
+                response.headers_mut().insert(
+                    header::CONTENT_TYPE,
+                    if series.is_some() {
+                        header::HeaderValue::from_static("application/json")
+                    } else {
+                        content_type
+                            .unwrap_or_else(|| header::HeaderValue::from_static("application/json"))
+                    },
+                );
+                response
+            }
+            Ok(None) => {
+                let mut response = (status, bytes).into_response();
+                if let Some(v) = content_type {
+                    response.headers_mut().insert(header::CONTENT_TYPE, v);
+                }
+                response
+            }
+            Err(_) => failure(),
+        };
+    }
     // Feign methods returning Response bypass ErrorDecoder, including non-2xx.
     let status = upstream.status();
     let content_type = upstream

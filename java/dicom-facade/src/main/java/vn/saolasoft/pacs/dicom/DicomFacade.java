@@ -20,7 +20,10 @@ public final class DicomFacade {
     public static int apiVersion() { return 2; }
     public static String capabilitiesJson() {
         // Native codecs are not advertised until tested on the deployed platform.
-        return "{\"apiVersion\":2,\"operations\":[\"downloadMetadata\",\"downloadSeries\",\"encodeVideo\"],\"codecs\":[]}";
+        return "{\"apiVersion\":2,\"operations\":[\"downloadMetadata\",\"downloadSeries\",\"encodeVideo\",\"keyImage\"],\"codecs\":[]}";
+    }
+    public static String keyImage(String operation,String manifest) throws Exception {
+        return vn.saolasoft.pacs.dicom.keyimage.KeyImageSupport.run(operation,manifest);
     }
     private static final String DEFAULT_PATH = "{00100020}-{00100010}/{00080050}/{00200011}-{0008103E}/{00080018}";
 

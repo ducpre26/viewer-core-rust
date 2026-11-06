@@ -52,7 +52,21 @@ async fn main() -> std::process::ExitCode {
             return std::process::ExitCode::FAILURE;
         }
     };
+    let key_image = match api::KeyImageRuntime::new(
+        config.key_image,
+        database.clone(),
+        auth.clone(),
+        jvm.clone(),
+    ) {
+        Ok(runtime) => runtime,
+        Err(message) => {
+            eprintln!("Key image configuration error: {message}");
+            std::process::exit(1);
+        }
+    };
+    let key_image_job = tokio::spawn(key_image.clone().run());
     let mut router = api::router(database.clone(), jvm.clone(), auth, config.session);
+    router = router.layer(summer_web::axum::Extension(key_image));
     router = router.layer(summer_web::axum::Extension(download));
     app.add_plugin(WebPlugin)
         .add_plugin(JobPlugin)
@@ -70,6 +84,8 @@ async fn main() -> std::process::ExitCode {
             std::process::exit(1);
         }
     }
+    key_image_job.abort();
+    let _ = key_image_job.await;
     cleanup.abort();
     let _ = cleanup.await;
     if let Some(jvm) = jvm

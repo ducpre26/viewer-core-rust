@@ -16,6 +16,11 @@ pub struct FileRequest {
 }
 
 enum Work {
+    KeyImage {
+        operation: String,
+        manifest: String,
+        _owner: Arc<dyn Send + Sync>,
+    },
     Metadata {
         json: String,
         pattern: String,
@@ -69,6 +74,31 @@ impl Jvm {
             .map_err(|_| Error::Timeout)?
             .map_err(|_| Error::WorkerStopped)?
     }
+    pub async fn key_image(
+        &self,
+        operation: String,
+        manifest: String,
+        owner: Arc<dyn Send + Sync>,
+    ) -> Result<String, Error> {
+        if !self
+            .0
+            .capabilities
+            .borrow()
+            .as_ref()
+            .is_some_and(|c| c.operations.iter().any(|o| o == "keyImage"))
+        {
+            return Err(Error::Contract);
+        }
+        self.download(
+            Work::KeyImage {
+                operation,
+                manifest,
+                _owner: owner,
+            },
+            Instant::now() + self.0.timeout,
+        )
+        .await
+    }
     pub async fn download_metadata(
         &self,
         json: String,
@@ -110,6 +140,24 @@ pub(super) fn execute(
     let result = frame(env, |env| {
         let class: &JClass<'_> = class.as_obj().into();
         match &job.work {
+            Work::KeyImage {
+                operation,
+                manifest,
+                ..
+            } => {
+                let operation = invoke(env, |e| e.new_string(operation))?;
+                let manifest = invoke(env, |e| e.new_string(manifest))?;
+                let value = invoke(env, |e| {
+                    e.call_static_method(
+                        class,
+                        "keyImage",
+                        "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                        &[(&operation).into(), (&manifest).into()],
+                    )
+                })?
+                .l()?;
+                text(env, value)
+            }
             Work::Metadata {
                 json,
                 pattern,
@@ -181,6 +229,102 @@ pub(crate) mod tests {
     use super::*;
     use std::fs;
 
+    pub(crate) async fn key_image_checks(jvm: &Jvm) {
+        // All paths are test-owned; the fixture proves JNI entered before timeout/drop.
+        let directory = Arc::new(tempfile::tempdir().unwrap());
+        let path = directory
+            .path()
+            .join("input")
+            .to_string_lossy()
+            .into_owned();
+        let weak = Arc::downgrade(&directory);
+        let result = jvm
+            .download(
+                Work::KeyImage {
+                    operation: "slow".into(),
+                    manifest: path.clone(),
+                    _owner: directory.clone(),
+                },
+                Instant::now() + Duration::from_millis(200),
+            )
+            .await;
+        assert_eq!(result, Err(Error::Timeout));
+        assert!(std::path::Path::new(&format!("{path}.started")).exists());
+        drop(directory);
+        assert!(weak.upgrade().is_some());
+        tokio::time::sleep(Duration::from_millis(800)).await;
+        assert!(weak.upgrade().is_none());
+        let directory = Arc::new(tempfile::tempdir().unwrap());
+        let path = directory
+            .path()
+            .join("input")
+            .to_string_lossy()
+            .into_owned();
+        let owner = directory.clone();
+        let worker = jvm.clone();
+        let name = path.clone();
+        let task = tokio::spawn(async move { worker.key_image("slow".into(), name, owner).await });
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while !std::path::Path::new(&format!("{path}.started")).exists() {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+        // Saturate the same bounded queue with expired jobs; none may enter Java.
+        let mut tasks = Vec::new();
+        for n in 0..20 {
+            let worker = jvm.clone();
+            let owner = directory.clone();
+            let name = format!("{path}-{n}");
+            tasks.push(tokio::spawn(async move {
+                worker
+                    .download(
+                        Work::KeyImage {
+                            operation: "queued".into(),
+                            manifest: name,
+                            _owner: owner,
+                        },
+                        Instant::now() + Duration::from_millis(100),
+                    )
+                    .await
+            }));
+        }
+        let mut busy = 0;
+        let mut expired = 0;
+        for task in tasks {
+            match task.await.unwrap() {
+                Err(Error::Busy) => busy += 1,
+                Err(Error::Timeout) => expired += 1,
+                other => panic!("unexpected {other:?}"),
+            }
+        }
+        assert!(busy > 0 && expired > 0);
+        task.abort();
+        let _ = task.await;
+        let weak = Arc::downgrade(&directory);
+        drop(directory);
+        assert!(weak.upgrade().is_some());
+        tokio::time::sleep(Duration::from_millis(800)).await;
+        assert!(weak.upgrade().is_none());
+        let owner = Arc::new(tempfile::tempdir().unwrap());
+        let path = owner.path().join("input").to_string_lossy().into_owned();
+        assert_eq!(
+            jvm.key_image("count".into(), path.clone(), owner.clone())
+                .await
+                .unwrap(),
+            "{\"count\":2}",
+            "expired/cancelled queue work must not invoke Java"
+        );
+        for _ in 0..100 {
+            assert_eq!(
+                jvm.key_image("throw".into(), path.clone(), owner.clone())
+                    .await,
+                Err(Error::JavaException)
+            );
+        }
+        assert!(jvm.check().await.is_ok());
+    }
     pub(crate) async fn download_checks(jvm: &Jvm) {
         use tokio::sync::Semaphore;
         struct Owner {

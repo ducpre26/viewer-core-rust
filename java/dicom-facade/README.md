@@ -1,15 +1,16 @@
 # JVM facade
 
-Thư viện Java 25 độc lập cho nền tảng Step 3 và download Step 12. API công khai:
+Thư viện Java 25 độc lập cho nền tảng Step 3, download Step 12 và key image Step 13. API công khai:
 `vn.saolasoft.pacs.dicom.DicomFacade`.
 
 | Phương thức | Chữ ký JNI | Kết quả |
 |---|---|---|
 | `public static int apiVersion()` | `()I` | `2` |
-| `public static String capabilitiesJson()` | `()Ljava/lang/String;` | API 2; downloadMetadata/downloadSeries/encodeVideo; codecs chưa quảng bá |
+| `public static String capabilitiesJson()` | `()Ljava/lang/String;` | API 2; downloadMetadata/downloadSeries/encodeVideo/keyImage; codecs chưa quảng bá |
 | `downloadMetadata(json, pattern, index)` | `(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;` | Metadata và path theo dcm4che AttributesFormat |
 | `downloadSeries(json)` | `(Ljava/lang/String;)Ljava/lang/String;` | UID/index series theo baseline Java |
 | `encodeVideo(manifest, output, fps)` | `(Ljava/lang/String;Ljava/lang/String;I)V` | JavaCV/FFmpeg MP4, xử lý từng frame |
+| `keyImage(operation, manifest)` | `(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;` | Parse/write/merge/frame theo Java; Rust giữ session, pending và STOW |
 
 API 2 bỏ quota download và lớp LimitedOutput, không tương thích chữ ký API 1.
 Build/deploy distribution và binary Rust cùng nhau. Không còn guard metadata
@@ -17,8 +18,8 @@ Build/deploy distribution và binary Rust cùng nhau. Không còn guard metadata
 
 Phiên bản API độc lập với phiên bản gói thư viện `0.1.0`. Step 12 dùng dcm4che
 5.33.1, JavaCV 1.5.9 và FFmpeg 6.0-1.5.9 theo baseline. Rust không dùng Orthanc transcode/native, khác Java. DICOM giữ
-nguyên byte ở Rust; JPEG lấy từ WADO-RS rendered của store. Facade chỉ parse
-metadata/tạo path và encode MP4. Native FFmpeg vẫn được đóng gói cho Windows/Linux
+nguyên byte ở Rust; JPEG lấy từ WADO-RS rendered của store. Facade parse metadata/tạo path, encode MP4 và xử lý DICOM key image;
+việc lấy JPEG từ store chỉ áp dụng download, không giới hạn ingest key image. Native FFmpeg vẫn được đóng gói cho Windows/Linux
 x64 theo T14; các method facade không tự gọi HTTP hoặc ZIP.
 Module không kế thừa Spring
 parent, không chạy server, truy cập database hoặc thêm điểm móc kiểm thử vào mã production.
@@ -68,3 +69,21 @@ Phiên bản plugin Maven được ghim cố định. Cấu hình đóng gói d�
 [chọn phiên bản Java khi biên dịch](https://maven.apache.org/plugins/maven-compiler-plugin/examples/set-compiler-release.html),
 [sao chép dependency runtime](https://maven.apache.org/plugins/maven-dependency-plugin/examples/copying-project-dependencies.html)
 và [các mục trong manifest JAR](https://maven.apache.org/shared/maven-archiver/examples/manifestEntries.html).
+
+
+Step 13 giữ thứ tự Java: `parse` ghi metadata/bulk manifest vào thư mục job;
+Rust validate/tạo pending; `write` bổ sung thuộc tính và ghi DICOM/metadata.
+`merge` giữ dcm4che JSON/HashMap khi ghép dữ liệu local; `frame` ghi multipart
+JPEG local vào file job. Manifest/path do Rust tạo; worker giữ file lease và
+lock storage đến hết call, kể cả HTTP timeout/disconnect. Không có Java reference
+thoát boundary. Method trả JSON dataset hoặc lỗi có status/errorCode/message;
+JNI exception bất ngờ vẫn qua cơ chế clear/withhold dùng chung.
+
+Các helper DICOM được port từ revision Java `2373896f`; không chứa Spring,
+repository, scheduler hoặc HTTP client. Dependency thêm từ Java nguồn:
+dcm4che-mime/ws-rs 5.33.1, jersey-common 3.1.10, commons-io 2.15.1.
+Nhánh QuickTime của nguồn vẫn gọi `ffmpeg` để đổi container; môi trường dùng
+nhánh này cần cung cấp executable đó. Corpus đã kiểm chứng và giới hạn bằng
+chứng ghi ở Step 13; không suy diễn hỗ trợ codec chưa thử trên production.
+Đóng stream metadata để không giữ khóa file Windows và kiểm tra containment
+đường dẫn là trách nhiệm tài nguyên của facade, không thay thứ tự pending/cleanup.

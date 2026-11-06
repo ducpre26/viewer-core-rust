@@ -10,9 +10,11 @@ use std::time::Duration;
 pub mod client;
 pub mod client_permission;
 pub mod config;
+pub mod key_image;
 mod m20261026_auth;
 mod m20261026_config;
 mod m20261026_permissions;
+mod m20261106_key_image;
 pub mod permission;
 pub mod session;
 
@@ -25,6 +27,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261026_auth::Migration),
             Box::new(m20261026_permissions::Migration),
             Box::new(m20261026_config::Migration),
+            Box::new(m20261106_key_image::Migration),
         ]
     }
 }

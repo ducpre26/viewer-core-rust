@@ -261,3 +261,93 @@ Sai MIME của WADO-URI được ghi riêng; Rust dùng
 WADO-RS rendered, yêu cầu HTTP 200, Content-Type image/jpeg, SOI/EOI và kích thước
 JPEG hợp lệ. Store phải hỗ trợ `/frames/{1-based}/rendered`; không fallback
 sang codec local hoặc trả PNG/DICOM dưới nhãn JPEG.
+
+
+## 9. Key image (Step 13)
+
+Mục đích: thu hành vi Java gốc rồi kiểm chứng ingest/pending/DICOM, đọc local,
+retry/STOW/cleanup qua Rust/JNI/PostgreSQL thật và kho Postman synthetic cục bộ.
+Không gửi key image lên PACS thật. Cần PostgreSQL test riêng với bảng
+`STUDY_KEY_IMAGE` rỗng; suite từ chối dispatch nếu đã có record trước khi chạy.
+Không dùng database vận hành cho bài này.
+
+```powershell
+python tools/baseline_key_image.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+# Build facade bằng lệnh mục 5; cài pydicom/Pillow vào target theo mục 8 nếu chưa có.
+python tools/smoke_key_image.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+```
+
+Baseline compile service Java gốc vào target, dùng repository/session double,
+không sửa repo Java; chưa thay cho kiểm chứng Spring container/DB Java thật.
+Runner smoke khởi động/dừng Postman simulation không ghi history, chạy test
+`postgres_key_image_contract` với JAR production và `-Xcheck:jni`, so DICOM bằng
+pydicom/Pillow độc lập, rồi build/chạy binary qua TCP. Bài TCP kiểm tra ingest,
+WADO local và pending được xuất/cleanup sau restart bật scheduler. Session/cache,
+DB record và file đều dùng dữ liệu synthetic; config fixture không sửa TOML local.
+
+Kết quả ở `target/step-13-logs/`: `java-baseline.log`, `contract.log`,
+`simulation.ndjson`, `independent-output.json`, `tcp-result.json` và log binary.
+Fixture có version control: `docs/baseline/step-13-java.json`.
+Queue/deadline/cancellation/lease/reference của operation key image nằm trong
+case `key-image` của `tools/smoke_jni.py` (mục 6); đây là fixture Java riêng để
+điều khiển thời điểm call thật, không thay corpus DICOM production trong smoke.
+Các tham số JVM trong runner là cấu hình thử nghiệm, không chốt P1–P4 production.
+
+### Step 13 với store QA thật
+
+Theo yêu cầu người dùng 2026-11-06, runner sau đọc `docs/STORE.md`, GET study
+tham chiếu và **ghi hai study synthetic mới lên QA**, giữ lại để review.
+Không chạy nếu không muốn tạo dữ liệu test trên QA. Cần binary/facade đã build,
+pydicom/Pillow tại target/step-12-tools và psql với quyền CREATE/DROP DATABASE.
+Runner tạo DB PostgreSQL riêng, dọn DB/config chứa credential sau khi chạy;
+không bật scheduler trên database hiện có.
+
+```powershell
+python tools/verify_live_key_image.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+```
+
+Kiểm tra ingest/pending/local metadata, restart scheduler, QA WADO readback,
+UID/transfer syntax/pixel bằng công cụ độc lập và cleanup pending/file.
+Raw local frame hiện là giới hạn Java, được ghi riêng. Kết quả trong
+`target/step-13-logs/live-qa/result.json`; exit 1 nếu toàn flow chưa đạt.
+Lượt 2026-11-06 chưa đạt: metadata.json gửi dưới nhãn DICOM khiến QA trả 400,
+dù DICOM đã được nhận. Chi tiết và đối chứng ở Step 13.
+
+Có thể chọn store và thư mục bằng chứng riêng, không sửa file store cũ:
+
+```powershell
+python tools/verify_live_key_image.py --store-file docs/STORE_2.md --output target/step-13-logs/live-qa-store-2 --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+```
+
+Preflight phải trả JSON array QIDO trước khi tạo database hoặc gửi STOW.
+Lượt STORE_2 ngày 2026-11-06 dừng ở preflight do HTTP 200/text/html (SPAX UI),
+chưa kiểm chứng STOW hoặc readback trên store này.
+
+Lượt STORE_2 cập nhật cuối ngày 2026-11-06 dùng Bearer auth đã đạt bằng kiểm tra
+scheduler và delayed readback bổ sung; evidence ở
+`target/step-13-logs/live-qa-store-2-attempt-3/`. Có thể dùng `--output` để giữ
+bằng chứng riêng từng lượt. Runner nhận `auth Bearer ...`, `auth Basic ...`
+hoặc dạng user/password cũ. Đã bổ sung chờ metadata 30 giây và fallback Accept
+application/dicom khi store trả 406; chưa chạy lại nguyên runner sau bổ sung.
+
+Theo yêu cầu người dùng, có thể thêm hai key image synthetic vào study được
+ghi trong file, trong một series mới, bằng `--reference-study`. Mode này lấy
+patient/study metadata của instance gốc, kiểm tra các series cũ được giữ nguyên
+và không xóa dữ liệu trên store. Cần study có source series đọc được; không
+tự tạo study mới với thông tin bệnh nhân giả khi không tìm thấy study gốc.
+
+```powershell
+python tools/verify_live_key_image.py --store-file docs/STORE_2.md --reference-study --output target/step-13-logs/store-2-reference-study --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+```
+
+Đối chứng gửi thẳng store, không gọi Rust/JVM/DB, dùng lại hai DICOM/SOP UID
+từ `target/step-13-logs/store-2-reference-stow` và STOW URL/auth trong STORE_2.md:
+
+```powershell
+python tools/send_key_image_direct.py
+```
+
+Chỉ gửi DICOM, không metadata.json; ghi status/body STOW, poll metadata 30 giây
+và GET DICOM vào `target/step-13-logs/direct-store-2`. Không xóa remote data.
+Exit 0 là phép đo chạy xong, cần đọc status/body và readbackVerified trong
+result.json; không tự tính HTTP 200 là kiểm chứng lưu ảnh thành công.

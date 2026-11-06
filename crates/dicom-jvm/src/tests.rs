@@ -62,6 +62,7 @@ fn jvm_subprocess_suite() {
     for case in [
         "normal",
         "download",
+        "key-image",
         "lib-only",
         "exceptions",
         "slow",
@@ -318,6 +319,11 @@ fn child(case: &str, settings: &JvmSettings) {
             _ => {}
         }
         let jvm = started.unwrap();
+        if case == "key-image" {
+            download::tests::key_image_checks(&jvm).await;
+            jvm.shutdown().await.unwrap();
+            return;
+        }
         if case == "download" {
             download::tests::download_checks(&jvm).await;
             jvm.shutdown().await.unwrap();

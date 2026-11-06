@@ -64,6 +64,7 @@ pub struct AppConfig {
     pub session: SessionConfig,
     pub jni: JvmSettings,
     pub video: crate::api::VideoSettings,
+    pub key_image: crate::api::KeyImageSettings,
 }
 
 impl AppConfig {
@@ -88,6 +89,13 @@ impl AppConfig {
             auth,
             session,
             jni,
+            key_image: {
+                let settings = registry
+                    .get_config::<crate::api::KeyImageSettings>()
+                    .map_err(|_| "Invalid [key_image] configuration")?;
+                settings.validate()?;
+                settings
+            },
             video: {
                 let settings = registry
                     .get_config::<crate::api::VideoSettings>()

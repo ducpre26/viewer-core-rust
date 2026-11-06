@@ -289,9 +289,9 @@ java/dicom-facade/
 
 Facade dùng bộ dependency Java hiện tại làm baseline (dcm4che 5.33.1 theo pom.xml nguồn); không nâng dependency trong đợt port. Chỉ lấy dependency cần cho DICOM, không mang Spring sang. Rust không dùng Orthanc transcode/native, khác Java. JavaCV/FFmpeg cho MP4 giữ theo T14.
 
-Facade hiện tại cung cấp `downloadMetadata`, `downloadSeries`, `encodeVideo` ngoài
+Facade hiện tại cung cấp `downloadMetadata`, `downloadSeries`, `encodeVideo`, `keyImage` ngoài
 hai method kiểm tra version/capabilities. Không còn method render/transcode local.
-Các operation định hướng cho những tính năng chưa triển khai chỉ bổ sung tại step
+Step 13 dùng `keyImage(operation, manifest)` cho parse/write/merge/frame; Rust cập nhật pending giữa parse và write theo Java. Các operation định hướng cho những tính năng chưa triển khai chỉ bổ sung tại step
 cần sử dụng, ví dụ:
 
 - `parseToJson(byte[])`
@@ -362,7 +362,7 @@ rust/crates/
 
 Dùng crate `jni`/jni-rs; phiên bản và feature chính xác cần được kiểm tra, khóa trong Cargo.lock tại Step 3. Đoạn trait dưới đây minh họa ranh giới nghiệp vụ, chưa phải signature đã chốt cho byte/file và async dispatch.
 
-Chỉ `dicom-jvm` được thao tác `JNIEnv`, `JObject`, `JClass`, method signature và Java reference. Module nghiệp vụ dùng interface Rust an toàn; hiện thực Step 12 là `download_metadata`, `download_series`, `download_file` với `FileOperation::Video`. DICOM/JPEG đi qua HTTP/file của Rust, không có operation render/transcode. Trait dưới đây chỉ minh họa cho các tính năng tương lai, không phải danh sách operation đã triển khai. Riêng `create_key_image` không quy định ingest nguyên lô hay kết quả luôn nằm trong `Vec<u8>`; signature byte/file và orchestration phải theo contract Java tại Step 13:
+Chỉ `dicom-jvm` được thao tác `JNIEnv`, `JObject`, `JClass`, method signature và Java reference. Module nghiệp vụ dùng interface Rust an toàn; hiện thực Step 12 là `download_metadata`, `download_series`, `download_file` với `FileOperation::Video`; Step 13 thêm `key_image` dùng chung bounded worker và owned file lease. DICOM/JPEG đi qua HTTP/file của Rust, không có operation render/transcode. Trait dưới đây chỉ minh họa cho các tính năng tương lai, không phải danh sách operation đã triển khai. Riêng `create_key_image` không quy định ingest nguyên lô hay kết quả luôn nằm trong `Vec<u8>`; signature byte/file và orchestration phải theo contract Java tại Step 13:
 
 ```rust
 pub trait DicomEngine: Send + Sync {

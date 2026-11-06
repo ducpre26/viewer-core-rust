@@ -5,6 +5,7 @@ public final class DicomFacade {
     private static final String MODE = System.getProperty("fixture.mode",
             System.getenv().getOrDefault("JNI_TEST_CASE", "normal"));
     private static int calls;
+    private static int keyCalls;
 
     static {
         if (MODE.equals("java-thread")) {
@@ -30,6 +31,7 @@ public final class DicomFacade {
 
     public static String capabilitiesJson() {
         return switch (MODE) {
+            case "key-image" -> "{\"apiVersion\":2,\"operations\":[\"downloadMetadata\",\"downloadSeries\",\"encodeVideo\",\"keyImage\"],\"codecs\":[]}";
             case "json" -> "{invalid";
             case "capabilities" -> "{\"apiVersion\":2,\"operations\":[\"print\"],\"codecs\":[]}";
             case "null" -> null;
@@ -43,6 +45,15 @@ public final class DicomFacade {
         throw new IllegalArgumentException("PRIVATE_PATIENT_TOKEN /sensitive/path password=secret");
     }
 
+    public static String keyImage(String operation,String path) throws Exception {
+        if(operation.equals("count"))return "{\"count\":"+keyCalls+"}";
+        keyCalls++;
+        if(operation.equals("throw")) throw new IllegalArgumentException("PRIVATE_PATIENT_TOKEN");
+        java.nio.file.Files.writeString(java.nio.file.Path.of(path+".started"),"started");
+        if(operation.equals("slow")) Thread.sleep(700);
+        java.nio.file.Files.writeString(java.nio.file.Path.of(path+".done"),"done");
+        return "{}";
+    }
     public static String downloadSeries(String json) { return "[]"; }
     public static String downloadMetadata(String json,String pattern,String index) { return "[]"; }
     public static void encodeVideo(String source,String destination,int fps) throws Exception {

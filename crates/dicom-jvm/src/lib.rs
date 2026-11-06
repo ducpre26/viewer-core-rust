@@ -86,7 +86,14 @@ impl Capabilities {
         self.api_version == 2
             && self.codecs.is_empty()
             && (self.operations.is_empty()
-                || self.operations == ["downloadMetadata", "downloadSeries", "encodeVideo"])
+                || self.operations == ["downloadMetadata", "downloadSeries", "encodeVideo"]
+                || self.operations
+                    == [
+                        "downloadMetadata",
+                        "downloadSeries",
+                        "encodeVideo",
+                        "keyImage",
+                    ])
     }
 }
 
