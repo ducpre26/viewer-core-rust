@@ -417,8 +417,8 @@ Yêu cầu:
 - Không gọi JNI blocking trực tiếp trên Tokio worker.
 - Không lưu hoặc chia sẻ `JNIEnv` giữa các thread.
 - `JavaVM` handle có thể được chia sẻ theo API của binding; `JNIEnv` thì không.
-- Worker pool có queue bound và timeout.
-- Tách pool `print/DIMSE` khỏi pool `metadata/video` nếu latency khác biệt lớn.
+- Worker metadata/video/key image có queue bound và timeout. Print dùng execution context theo từng giao dịch tại mục 6.3.
+- Print/DIMSE có native execution context theo từng giao dịch, độc lập với metadata/video, theo contract Java xác nhận ngày 2026-11-11.
 - Không spawn một OS thread mới cho mỗi request.
 
 ### 5.4 Class, method và object reference
@@ -473,11 +473,11 @@ Quy tắc:
 
 ### 5.7 Timeout, cancellation và ownership
 
-- Phân biệt deadline chờ queue, deadline chờ kết quả và thời điểm Java call thực sự kết thúc. Worker kiểm tra deadline/cancellation trước khi bắt đầu job; job đã hết hạn hoặc bị hủy trong queue không được chạy.
+- Phân biệt deadline chờ queue, deadline chờ kết quả và thời điểm Java call thực sự kết thúc. Worker kiểm tra deadline/cancellation trước khi bắt đầu job; job đã hết hạn hoặc bị hủy trong queue không được chạy. Print không có queue riêng, kiểm tra deadline/cancellation ngay trước khi gọi Java trên native thread của giao dịch.
 - Khi worker nhận job, job phải sở hữu input/output buffer, direct-buffer backing memory và file lease độc lập với HTTP request. Request timeout/disconnect chỉ dừng việc chờ kết quả; không giải phóng tài nguyên mà Java còn sử dụng.
 - Giữ slot worker, memory permit và file lease đến khi Java call thực sự trả về. Không trả slot sớm hoặc tạo worker thay thế không giới hạn để che giấu call bị treo.
 - Chỉ cleanup file/output và giải phóng backing memory sau khi Java kết thúc và không còn consumer sử dụng; TTL cleanup phải bỏ qua file đang được lease.
-- Cooperative cancellation là best effort. Call không phục hồi phải theo cơ chế recovery cấp process; queue vẫn có giới hạn và từ chối tải mới khi quá tải.
+- Cooperative cancellation là best effort. Call không phục hồi phải theo cơ chế recovery cấp process. Queue metadata/video/key image có giới hạn và từ chối tải mới khi quá tải; print giữ cơ chế nhận giao dịch độc lập theo Java.
 - Print timeout sau khi có thể đã gửi N-ACTION được phân loại `outcome_unknown` nội bộ, không tự động retry. Mapping ra HTTP phải theo contract được duyệt; không báo thành công giả hoặc khẳng định chưa in. Cần đối soát trước khi gửi lại.
 - Test bắt buộc: hết hạn trong queue không gọi facade; disconnect khi Java còn chạy; buffer/file/permit còn hợp lệ đến khi call kết thúc; cleanup sau completion; print timeout không tự retry.
 
@@ -510,7 +510,7 @@ Rust gửi một `PrintRequest` hoàn chỉnh. Java facade sở hữu toàn bộ
 - DIMSE response/status.
 - Association release/abort.
 
-Một print transaction không được chia thành nhiều JNI call giữ `Association` giữa các call. Print chạy trên JNI worker pool riêng với concurrency thấp.
+Một print transaction không được chia thành nhiều JNI call giữ `Association` giữa các call. Theo xác nhận ngày 2026-11-11, mỗi giao dịch print chạy trên native thread riêng như Java gốc; adapter không tự đặt queue hoặc giới hạn số worker print.
 
 JNI timeout chỉ giới hạn thời gian Rust chờ; nó không tự hủy được Java method đang block. Vì vậy Java facade phải cấu hình connect/read/DIMSE timeout và hỗ trợ cooperative cancellation nếu khả thi.
 
@@ -722,7 +722,7 @@ Rollback giới hạn trong môi trường Rust: dừng hoặc vô hiệu hóa r
 | JVMJNI-R09 | Sai JRE/libjvm trên production | Packaged runtime; explicit path; manifest/checksum |
 | JVMJNI-R10 | Tổng RSS vẫn cao do nhúng JVM | Memory budget; Xmx/direct limits; benchmark với Java baseline theo P4 |
 | JVMJNI-R11 | Java/native codec crash làm chết Rust | Soak test; guarded concurrency; restart process; đổi kiến trúc phải hỏi người dùng |
-| JVMJNI-R12 | DICOM Print treo | Java DIMSE timeout; worker pool riêng; process-level recovery |
+| JVMJNI-R12 | DICOM Print treo | Java DIMSE timeout; execution context theo giao dịch; process-level recovery |
 | JVMJNI-R13 | Khác API/database behavior | OpenAPI/contract/fixture compatibility tests |
 | JVMJNI-R14 | PHI xuất hiện trong Java log/exception | Redaction facade + Rust log policy + tests |
 
@@ -774,7 +774,7 @@ Nguồn quyết định: người dùng xác nhận T1–T11 và T12–T13 trong
 |---|---|---|
 | T7 bổ sung | Vendor/build Java 25; JRE đầy đủ hay jlink | 3, 18 |
 | Version | Phiên bản Rust toolchain/crates và feature tương thích, khóa Cargo.lock; không tự coi bản latest là đã chốt | 1–3 |
-| P1 | Số worker, dung lượng queue; print dùng pool riêng | 3, 17 |
+| P1 | Số worker, dung lượng queue cho metadata/video; print theo execution context từng giao dịch của Java | 3, 17 |
 | P2 | RAM/container, JVM heap/direct memory và tổng RSS | 3, 18 |
 | P3 | Timeout, payload limit, ngưỡng byte[]/file và quota temp storage | 3, 12, 13, 17 |
 | P4 | Ngưỡng so với Java baseline, thời gian soak và bộ PACS/printer/viewer kiểm chứng | 0, 3, 18 |

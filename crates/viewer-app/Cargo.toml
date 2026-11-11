@@ -6,6 +6,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+aide = { version = "=0.16.0-alpha.4", features = ["axum-multipart"] }
+axum = { version = "=0.8.9", features = ["multipart"] }
 summer.workspace = true
 summer-web.workspace = true
 summer-job.workspace = true

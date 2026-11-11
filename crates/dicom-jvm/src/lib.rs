@@ -1,7 +1,8 @@
-//! One embedded JVM per process, owned by a dedicated native worker.
+//! One embedded JVM per process with dedicated control/download and print workers.
 //! No Java references or environments cross this crate's public boundary.
 mod config;
 mod download;
+mod print;
 pub use config::{JvmConfig, JvmSettings};
 pub use download::{FileOperation, FileRequest};
 
@@ -93,6 +94,14 @@ impl Capabilities {
                         "downloadSeries",
                         "encodeVideo",
                         "keyImage",
+                    ]
+                || self.operations
+                    == [
+                        "downloadMetadata",
+                        "downloadSeries",
+                        "encodeVideo",
+                        "keyImage",
+                        "print",
                     ])
     }
 }
@@ -113,6 +122,7 @@ enum Command {
 }
 
 struct Shared {
+    print_runtime: watch::Receiver<Option<Arc<print::Runtime>>>,
     active: Arc<std::sync::atomic::AtomicUsize>,
     capabilities: watch::Sender<Option<Capabilities>>,
     running: watch::Sender<Option<std::time::Instant>>,
@@ -122,7 +132,7 @@ struct Shared {
     shutdown_timeout: Duration,
 }
 
-/// Cloneable control handle. The worker alone owns the JavaVM and its references.
+/// Cloneable handle. Native workers own VM attachments and Java references.
 #[derive(Clone)]
 pub struct Jvm(Arc<Shared>);
 
@@ -143,7 +153,9 @@ impl Jvm {
         let (ready_tx, ready_rx) = oneshot::channel();
         let (capabilities, _) = watch::channel(None);
         let (running, _) = watch::channel(None);
+        let (print_ready, print_runtime) = watch::channel(None);
         let shared = Arc::new(Shared {
+            print_runtime,
             active: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             capabilities: capabilities.clone(),
             running: running.clone(),
@@ -156,7 +168,15 @@ impl Jvm {
             .name("dicom-jni".into())
             .spawn(move || {
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    worker(config, receiver, &state, ready_tx, capabilities, running)
+                    worker(
+                        config,
+                        receiver,
+                        &state,
+                        ready_tx,
+                        capabilities,
+                        running,
+                        print_ready,
+                    )
                 }));
                 if !matches!(result, Ok(Ok(()))) {
                     state.send_replace(State::Failed);
@@ -267,6 +287,7 @@ fn worker(
     ready: oneshot::Sender<Result<(), Error>>,
     capabilities: watch::Sender<Option<Capabilities>>,
     running: watch::Sender<Option<std::time::Instant>>,
+    print_ready: watch::Sender<Option<Arc<print::Runtime>>>,
 ) -> Result<(), Error> {
     let vm = match create_vm(&config) {
         Ok(vm) => vm,
@@ -275,6 +296,9 @@ fn worker(
             return Err(error);
         }
     };
+    let vm = Arc::new(vm);
+    let print_runtime = print::Runtime::new(vm.clone(), state.clone());
+    print_ready.send_replace(Some(print_runtime.clone()));
     let mut stop_reply = None;
     let work = (|| -> Result<(), Error> {
         let mut env = vm.attach_current_thread().map_err(|_| Error::Jni)?;
@@ -339,6 +363,8 @@ fn worker(
         drop(env);
         Ok(())
     })();
+    print_ready.send_replace(None);
+    print_runtime.shutdown()?;
     if work.is_err() {
         state.send_replace(State::Failed);
     }
@@ -346,10 +372,11 @@ fn worker(
         return Err(Error::Shutdown);
     }
     eprintln!("JNI worker detached; global references released");
-    // SAFETY: this worker is the sole Rust owner/user of the VM. All JNI references
+    // SAFETY: all print calls have completed. All JNI references
     // and scoped attachments have been dropped; there are no Rust daemon attaches.
     // Java non-daemon threads may delay destruction, bounded by the host's shutdown
     // deadline. No JNI operation is performed after destruction.
+    let vm = Arc::try_unwrap(vm).map_err(|_| Error::Shutdown)?;
     let destroyed = unsafe { vm.destroy() }.map_err(|_| Error::Shutdown);
     if destroyed.is_ok() {
         eprintln!("JVM destroyed");

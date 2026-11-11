@@ -63,6 +63,7 @@ fn jvm_subprocess_suite() {
         "normal",
         "download",
         "key-image",
+        "print-worker",
         "lib-only",
         "exceptions",
         "slow",
@@ -293,6 +294,9 @@ fn child(case: &str, settings: &JvmSettings) {
     if matches!(case, "hang-startup" | "hang-probe") {
         config.timeout = Duration::from_millis(1500);
     }
+    if case == "print-worker" {
+        config.timeout = Duration::from_millis(200);
+    }
     if case == "exceptions" {
         exception_checks(config);
         return;
@@ -319,6 +323,10 @@ fn child(case: &str, settings: &JvmSettings) {
             _ => {}
         }
         let jvm = started.unwrap();
+        if case == "print-worker" {
+            print::checks(&jvm).await;
+            return;
+        }
         if case == "key-image" {
             download::tests::key_image_checks(&jvm).await;
             jvm.shutdown().await.unwrap();

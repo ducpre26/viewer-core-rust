@@ -15,7 +15,9 @@ mod m20261026_auth;
 mod m20261026_config;
 mod m20261026_permissions;
 mod m20261106_key_image;
+mod m20261111_printer;
 pub mod permission;
+pub mod printer;
 pub mod session;
 
 pub struct Migrator;
@@ -28,6 +30,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20261026_permissions::Migration),
             Box::new(m20261026_config::Migration),
             Box::new(m20261106_key_image::Migration),
+            Box::new(m20261111_printer::Migration),
         ]
     }
 }

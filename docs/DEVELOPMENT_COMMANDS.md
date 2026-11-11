@@ -351,3 +351,33 @@ Chỉ gửi DICOM, không metadata.json; ghi status/body STOW, poll metadata 30 
 và GET DICOM vào `target/step-13-logs/direct-store-2`. Không xóa remote data.
 Exit 0 là phép đo chạy xong, cần đọc status/body và readbackVerified trong
 result.json; không tự tính HTTP 200 là kiểm chứng lưu ảnh thành công.
+
+
+## 10. Kiểm tra DICOM Print (Step 17)
+
+Build và verify facade bằng mục 5 trước khi chạy. Các test chỉ tạo máy in,
+phiên và ảnh synthetic riêng, sau đó xóa bằng API.
+
+```powershell
+python -m pip install --target target/step-17-tools -r tools/print-test-requirements.txt
+python tools/smoke_print.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot'
+# Khi có target/classes của Java gốc để đối chiếu chuyển đổi raster PNG:
+python tools/smoke_print.py --java-home 'C:/Program Files/Eclipse Adoptium/jdk-25.0.4.101-hotspot' --java-baseline '../1pacs-viewer-core/target/classes'
+```
+
+Runner dùng cấu hình PostgreSQL từ TOML, binary Rust, JVM/facade production và
+Print SCP pynetdicom cục bộ qua TCP. Kiểm tra CRUD, validation, xác thực phiên,
+chiều Calling/Called AET, grayscale, hành vi màu PNG của Java, DIMSE warning,
+failure, reject, offline và timeout sau N-ACTION. Kết quả và log nằm trong
+`target/step-17-logs/`. Fixture raster ở `docs/baseline/step-17-java.json`.
+
+Runner còn yêu cầu 12 giao dịch in chạm N-ACTION đồng thời trên simulator,
+để xác minh khả năng nhận giao dịch độc lập. Upload 9 MiB được xử lý và 11 MiB
+bị từ chối theo giới hạn toàn request 10 MiB mặc định của Java. Giới hạn từng
+file 100 MiB được áp dụng riêng theo cấu hình Java.
+
+`smoke_jni.py` tại mục 6 có thêm case `print-worker` để kiểm tra in đồng thời,
+hủy trước khi gọi Java, giữ file đến completion, timeout, clear exception
+và các giao dịch khác tiếp tục chạy khi một giao dịch đang chờ máy in. Hồi quy DB dùng
+lệnh PostgreSQL ở mục 3. Những bài này sử dụng simulator; kiểm tra bản in vật lý
+cần máy in thực tế.

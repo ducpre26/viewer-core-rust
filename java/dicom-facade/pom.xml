@@ -17,6 +17,8 @@
         <repository><id>dcm4che</id><url>https://maven.dcm4che.org</url></repository>
     </repositories>
     <dependencies>
+        <dependency><groupId>org.dcm4che</groupId><artifactId>dcm4che-net</artifactId><version>5.33.1</version></dependency>
+        <dependency><groupId>org.apache.commons</groupId><artifactId>commons-imaging</artifactId><version>1.0.0-alpha6</version></dependency>
         <dependency><groupId>org.dcm4che</groupId><artifactId>dcm4che-mime</artifactId><version>5.33.1</version></dependency>
         <dependency><groupId>org.dcm4che</groupId><artifactId>dcm4che-ws-rs</artifactId><version>5.33.1</version></dependency>
         <dependency><groupId>org.glassfish.jersey.core</groupId><artifactId>jersey-common</artifactId><version>3.1.10</version></dependency>

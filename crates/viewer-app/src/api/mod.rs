@@ -1,5 +1,6 @@
 //! HTTP infrastructure; business routes belong to their migration steps.
 mod key_image;
+mod printer;
 pub use key_image::{KeyImageRuntime, KeyImageSettings};
 mod admin;
 mod download;
@@ -79,6 +80,7 @@ pub fn router(
     let configs = crate::persistence::config::ConfigStore::new(database.clone());
     crate::auth::secure(
         Router::new()
+            .merge(printer::router())
             .merge(key_image::router())
             .merge(download::router(auth.clone(), configs.clone()))
             .merge(wado::router(auth.clone()))

@@ -31,6 +31,7 @@ public final class DicomFacade {
 
     public static String capabilitiesJson() {
         return switch (MODE) {
+            case "print-worker" -> "{\"apiVersion\":2,\"operations\":[\"downloadMetadata\",\"downloadSeries\",\"encodeVideo\",\"keyImage\",\"print\"],\"codecs\":[]}";
             case "key-image" -> "{\"apiVersion\":2,\"operations\":[\"downloadMetadata\",\"downloadSeries\",\"encodeVideo\",\"keyImage\"],\"codecs\":[]}";
             case "json" -> "{invalid";
             case "capabilities" -> "{\"apiVersion\":2,\"operations\":[\"print\"],\"codecs\":[]}";
@@ -52,6 +53,14 @@ public final class DicomFacade {
         java.nio.file.Files.writeString(java.nio.file.Path.of(path+".started"),"started");
         if(operation.equals("slow")) Thread.sleep(700);
         java.nio.file.Files.writeString(java.nio.file.Path.of(path+".done"),"done");
+        return "{}";
+    }
+    public static String print(String path) throws Exception {
+        java.nio.file.Files.writeString(java.nio.file.Path.of(path + ".started"), "started");
+        String text = java.nio.file.Files.readString(java.nio.file.Path.of(path));
+        if (text.equals("slow")) Thread.sleep(700);
+        if (text.equals("throw")) throw new IllegalArgumentException("PRIVATE_PATIENT_TOKEN");
+        java.nio.file.Files.writeString(java.nio.file.Path.of(path + ".done"), "done");
         return "{}";
     }
     public static String downloadSeries(String json) { return "[]"; }

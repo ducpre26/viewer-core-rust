@@ -1,0 +1,25 @@
+{
+  "javaRevision": "2373896fca106bab446c0e14bb38f0b8d1725949",
+  "source": "PrintDicomServiceImpl.storeRasterInDicom",
+  "input": {
+    "format": "PNG",
+    "width": 2,
+    "height": 2,
+    "color": "RGB"
+  },
+  "observedPixelBytes": {
+    "grayscale": 4,
+    "color": 0
+  },
+  "callingAetField": "calledAeTitle",
+  "calledAetField": "aeTitle",
+  "printServiceHttpStatus": 200,
+  "missingOrDisabledPrinterMessage": "Printer not found or not enabled",
+  "multipart": {
+    "maxFileBytes": 104857600,
+    "maxRequestBytes": 10485760,
+    "source": "Java application.properties and Spring Boot 4.1.0 MultipartProperties defaults",
+    "scalarImageBinding": "first matching file, confirmed by original PrinterAPI MockMvc probe"
+  },
+  "execution": "Independent executor per print transaction; no printer-specific global worker or queue limit"
+}
